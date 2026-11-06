@@ -1,0 +1,14 @@
+Python 3.12.14
+PyTorch 2.5.1+cpu
+NumPy 2.3.5
+SciPy 1.17.0
+Numba 0.68.1
+Matplotlib 3.10.8
+nbformat 5.11.1
+IPython 9.16.1
+
+CPU calculations use float64 and one PyTorch thread per training process.
+Independent training jobs were run concurrently; recorded wall times are not isolated speed benchmarks.
+Numba accelerates the exact-CIR endpoint simulator; its NumPy/Python fallback uses the same equations.
+No external financial dataset or market-data subscription is needed.
+These are the versions used for the saved run.

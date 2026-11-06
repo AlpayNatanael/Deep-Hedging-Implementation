@@ -1,0 +1,346 @@
+{
+  "status": "completed",
+  "created_utc": "2026-11-06T08:05:06.239782+00:00",
+  "scope": "One independent test-sample sensitivity check of all frozen entropic-trained policies.",
+  "main_sample_seed": 40400,
+  "main_sample_paths": 65536,
+  "repeat_sample_seed": 50500,
+  "repeat_sample_paths": 65536,
+  "all_policies_share_repeat_paths": true,
+  "simulation_scheme": "exact_CIR_endpoints_mean_preserving_integral_stock_martingale_correction",
+  "simulation_substeps_per_trading_day": 64,
+  "cvar_alpha": 0.5,
+  "risk_aversion": 1.0,
+  "retraining_performed": false,
+  "checkpoint_reselection_performed": false,
+  "normalization_recalibration_performed": false,
+  "weights_and_normalization_buffers_unchanged": true,
+  "main_result_files_unchanged": true,
+  "all_sample_losses_retained_in_metrics": true,
+  "plotted_main_sample": "The notebook continues to use the original seed-40400 sample. This diagnostic does not replace its results or figures.",
+  "interpretation": "Variation between these two samples measures observed sampling sensitivity, not a confidence interval. Effective paths equal 1/sum(w_i^2) for normalized exp(lambda*loss_i) weights; a large maximum weight means a few observations dominate empirical entropic risk. No checkpoint or hyperparameter is changed in response.",
+  "maximum_main_metric_replay_error": 1.382431946694851e-10,
+  "simulation_seconds": 11.503338814000017,
+  "total_seconds": 16.924129525999888,
+  "policies": [
+    {
+      "run_id": "paper_full_Entropic_0",
+      "family": "paper_full",
+      "replicate_id": 0,
+      "weight_file": "runs/paper_full_0/Entropic.pt",
+      "weight_sha256": "0891979272b1ee3a68567269c2d134fb465fc9b7e588fe7d2d35bc72fe979ac5",
+      "selected_continuation_update": 1700,
+      "selected_validation_entropic_risk": 1.9551994584270425,
+      "main_sample": {
+        "mean_loss": 1.818552038015535,
+        "cvar": 2.198234156482436,
+        "entropic": 9.25919301564701,
+        "max_loss": 20.20286684095229,
+        "entropic_effective_paths": 1.3086076053985614,
+        "entropic_max_weight": 0.8635693571551029
+      },
+      "repeat_sample": {
+        "mean_loss": 1.821028847412033,
+        "cvar": 2.2013070191048594,
+        "entropic": 6.137101086130535,
+        "max_loss": 16.6223555338377,
+        "entropic_effective_paths": 2.0857982581879684,
+        "entropic_max_weight": 0.5460195809950625
+      },
+      "repeat_minus_main": {
+        "mean_loss": 0.00247680939649797,
+        "cvar": 0.0030728626224232336,
+        "entropic": -3.1220919295164755,
+        "max_loss": -3.580511307114591,
+        "entropic_effective_paths": 0.777190652789407,
+        "entropic_max_weight": -0.3175497761600403
+      }
+    },
+    {
+      "run_id": "paper_stock_Entropic_0",
+      "family": "paper_stock",
+      "replicate_id": 0,
+      "weight_file": "runs/paper_stock_0/Entropic.pt",
+      "weight_sha256": "96c4d1c8e5425061f172738a0b9a11355d489b47801cf17fc6cef8513d7cf263",
+      "selected_continuation_update": 3000,
+      "selected_validation_entropic_risk": 3.047574631186375,
+      "main_sample": {
+        "mean_loss": 1.8589039531649392,
+        "cvar": 2.757013859985062,
+        "entropic": 3.125686648133387,
+        "max_loss": 10.355172564417204,
+        "entropic_effective_paths": 761.1786673429468,
+        "entropic_max_weight": 0.021049699959194514
+      },
+      "repeat_sample": {
+        "mean_loss": 1.858906992681701,
+        "cvar": 2.7552201724278618,
+        "entropic": 3.2269942260858127,
+        "max_loss": 10.972104812531839,
+        "entropic_effective_paths": 275.68333114840203,
+        "entropic_max_weight": 0.03525160205058342
+      },
+      "repeat_minus_main": {
+        "mean_loss": 3.0395167618380015e-06,
+        "cvar": -0.0017936875572002187,
+        "entropic": 0.10130757795242573,
+        "max_loss": 0.6169322481146349,
+        "entropic_effective_paths": -485.4953361945448,
+        "entropic_max_weight": 0.014201902091388906
+      }
+    },
+    {
+      "run_id": "ours_Entropic_0",
+      "family": "ours",
+      "replicate_id": 0,
+      "weight_file": "runs/ours_0/Entropic.pt",
+      "weight_sha256": "cad99dc238abffec9ad7f21a08347eeb7861933925d63922b5b485d73c3b88d9",
+      "selected_continuation_update": 3000,
+      "selected_validation_entropic_risk": 3.110861342265512,
+      "main_sample": {
+        "mean_loss": 1.7966283534409455,
+        "cvar": 2.732105688243209,
+        "entropic": 3.0854787987232815,
+        "max_loss": 10.388268758029628,
+        "entropic_effective_paths": 611.8052344814993,
+        "entropic_max_weight": 0.02265069077665055
+      },
+      "repeat_sample": {
+        "mean_loss": 1.7971365354935263,
+        "cvar": 2.7293412790431537,
+        "entropic": 3.1459444695062118,
+        "max_loss": 10.71693459886455,
+        "entropic_effective_paths": 356.4650669162048,
+        "entropic_max_weight": 0.029618243898304746
+      },
+      "repeat_minus_main": {
+        "mean_loss": 0.0005081820525807412,
+        "cvar": -0.0027644092000551623,
+        "entropic": 0.0604656707829303,
+        "max_loss": 0.3286658408349208,
+        "entropic_effective_paths": -255.34016756529445,
+        "entropic_max_weight": 0.006967553121654195
+      }
+    },
+    {
+      "run_id": "paper_full_Entropic_1",
+      "family": "paper_full",
+      "replicate_id": 1,
+      "weight_file": "runs/paper_full_1/Entropic.pt",
+      "weight_sha256": "003c0ec6a97329a09415d29135d87b36cba625768c4c848ce91aadc5a2af9e83",
+      "selected_continuation_update": 2000,
+      "selected_validation_entropic_risk": 1.9440764884757602,
+      "main_sample": {
+        "mean_loss": 1.8196952839647031,
+        "cvar": 2.165637424114249,
+        "entropic": 3.694649446418353,
+        "max_loss": 14.594913516543055,
+        "entropic_effective_paths": 1.4625482302512016,
+        "entropic_max_weight": 0.8268840338890042
+      },
+      "repeat_sample": {
+        "mean_loss": 1.8204383269812079,
+        "cvar": 2.166574828364949,
+        "entropic": 2.2552135843811936,
+        "max_loss": 11.927573786692607,
+        "entropic_effective_paths": 16.80840804435088,
+        "entropic_max_weight": 0.24219921556764826
+      },
+      "repeat_minus_main": {
+        "mean_loss": 0.0007430430165047408,
+        "cvar": 0.0009374042506999913,
+        "entropic": -1.4394358620371595,
+        "max_loss": -2.6673397298504486,
+        "entropic_effective_paths": 15.34585981409968,
+        "entropic_max_weight": -0.584684818321356
+      }
+    },
+    {
+      "run_id": "paper_stock_Entropic_1",
+      "family": "paper_stock",
+      "replicate_id": 1,
+      "weight_file": "runs/paper_stock_1/Entropic.pt",
+      "weight_sha256": "c3b3ea7b77263796afcc2710c56578cc8e61b631d8dec57be2616cd120fe7b92",
+      "selected_continuation_update": 2200,
+      "selected_validation_entropic_risk": 3.01873967922168,
+      "main_sample": {
+        "mean_loss": 1.8042637419661465,
+        "cvar": 2.72544302340869,
+        "entropic": 3.0445210632384887,
+        "max_loss": 9.751117125753636,
+        "entropic_effective_paths": 992.2276139223866,
+        "entropic_max_weight": 0.012478366345102574
+      },
+      "repeat_sample": {
+        "mean_loss": 1.8054551369722012,
+        "cvar": 2.723421898865144,
+        "entropic": 3.2045790521839717,
+        "max_loss": 12.375540734762756,
+        "entropic_effective_paths": 44.4207131114092,
+        "entropic_max_weight": 0.14669594929526014
+      },
+      "repeat_minus_main": {
+        "mean_loss": 0.0011913950060546963,
+        "cvar": -0.0020211245435457492,
+        "entropic": 0.16005798894548295,
+        "max_loss": 2.6244236090091206,
+        "entropic_effective_paths": -947.8069008109774,
+        "entropic_max_weight": 0.13421758295015757
+      }
+    },
+    {
+      "run_id": "ours_Entropic_1",
+      "family": "ours",
+      "replicate_id": 1,
+      "weight_file": "runs/ours_1/Entropic.pt",
+      "weight_sha256": "e7b2a3db2d6c3a584f0630e327430f3d0ec9d4aee24f8f40dc2f427e554c8fc1",
+      "selected_continuation_update": 2700,
+      "selected_validation_entropic_risk": 3.0981985675338723,
+      "main_sample": {
+        "mean_loss": 1.7942475889509995,
+        "cvar": 2.732971893182323,
+        "entropic": 3.1131208906690464,
+        "max_loss": 11.12527165996372,
+        "entropic_effective_paths": 288.0611287782919,
+        "entropic_max_weight": 0.046041868132262694
+      },
+      "repeat_sample": {
+        "mean_loss": 1.7962650684270685,
+        "cvar": 2.7327872705770373,
+        "entropic": 3.106035051494029,
+        "max_loss": 10.741772388559939,
+        "entropic_effective_paths": 409.0991159523553,
+        "entropic_max_weight": 0.03159938717121784
+      },
+      "repeat_minus_main": {
+        "mean_loss": 0.0020174794760690062,
+        "cvar": -0.00018462260528551155,
+        "entropic": -0.007085839175017483,
+        "max_loss": -0.3834992714037817,
+        "entropic_effective_paths": 121.0379871740634,
+        "entropic_max_weight": -0.014442480961044855
+      }
+    },
+    {
+      "run_id": "paper_full_Entropic_2",
+      "family": "paper_full",
+      "replicate_id": 2,
+      "weight_file": "runs/paper_full_2/Entropic.pt",
+      "weight_sha256": "17b555d1959e28f78f639005f278930e22ecd2a16f934ea2ba6f41c8c3f8a9bd",
+      "selected_continuation_update": 2700,
+      "selected_validation_entropic_risk": 1.9483891858868194,
+      "main_sample": {
+        "mean_loss": 1.8162973574572427,
+        "cvar": 2.176715602449856,
+        "entropic": 1.9403038842977223,
+        "max_loss": 6.293471163010831,
+        "entropic_effective_paths": 42452.58051388262,
+        "entropic_max_weight": 0.001185977902844312
+      },
+      "repeat_sample": {
+        "mean_loss": 1.817609379543878,
+        "cvar": 2.17990768587413,
+        "entropic": 2.2031165939799546,
+        "max_loss": 11.813178957323903,
+        "entropic_effective_paths": 19.302946539598857,
+        "entropic_max_weight": 0.22757110826765026
+      },
+      "repeat_minus_main": {
+        "mean_loss": 0.0013120220866351673,
+        "cvar": 0.003192083424274017,
+        "entropic": 0.26281270968223236,
+        "max_loss": 5.519707794313072,
+        "entropic_effective_paths": -42433.27756734302,
+        "entropic_max_weight": 0.22638513036480595
+      }
+    },
+    {
+      "run_id": "paper_stock_Entropic_2",
+      "family": "paper_stock",
+      "replicate_id": 2,
+      "weight_file": "runs/paper_stock_2/Entropic.pt",
+      "weight_sha256": "678084421994fa6de65c86e96895bd99cd3af474c10871546f3205fca42f0caf",
+      "selected_continuation_update": 2500,
+      "selected_validation_entropic_risk": 3.2978857738446727,
+      "main_sample": {
+        "mean_loss": 1.8227174491571145,
+        "cvar": 2.723789147984521,
+        "entropic": 3.749670902659158,
+        "max_loss": 14.05284641319097,
+        "entropic_effective_paths": 4.817020642741875,
+        "entropic_max_weight": 0.4551267267744814
+      },
+      "repeat_sample": {
+        "mean_loss": 1.8241461228339575,
+        "cvar": 2.7219621397869034,
+        "entropic": 3.1937208257108054,
+        "max_loss": 10.827013740178538,
+        "entropic_effective_paths": 359.32173712887135,
+        "entropic_max_weight": 0.03152223924461008
+      },
+      "repeat_minus_main": {
+        "mean_loss": 0.001428673676842962,
+        "cvar": -0.0018270081976177188,
+        "entropic": -0.5559500769483527,
+        "max_loss": -3.225832673012432,
+        "entropic_effective_paths": 354.5047164861295,
+        "entropic_max_weight": -0.42360448752987134
+      }
+    },
+    {
+      "run_id": "ours_Entropic_2",
+      "family": "ours",
+      "replicate_id": 2,
+      "weight_file": "runs/ours_2/Entropic.pt",
+      "weight_sha256": "ec7ac184d0f4c03e6da8b0a884b5f895458f8d082c2e9329e989e608c7747ed8",
+      "selected_continuation_update": 2500,
+      "selected_validation_entropic_risk": 3.2020900219240573,
+      "main_sample": {
+        "mean_loss": 1.8009842354662327,
+        "cvar": 2.7365566632355742,
+        "entropic": 3.112866463308454,
+        "max_loss": 10.612933664365672,
+        "entropic_effective_paths": 575.4901648360102,
+        "entropic_max_weight": 0.027590391859442804
+      },
+      "repeat_sample": {
+        "mean_loss": 1.801210672005634,
+        "cvar": 2.7335875708907946,
+        "entropic": 3.1486770214037723,
+        "max_loss": 10.309001849728382,
+        "entropic_effective_paths": 495.98553180774996,
+        "entropic_max_weight": 0.019643082060679478
+      },
+      "repeat_minus_main": {
+        "mean_loss": 0.00022643653940135344,
+        "cvar": -0.0029690923447796003,
+        "entropic": 0.03581055809531808,
+        "max_loss": -0.3039318146372896,
+        "entropic_effective_paths": -79.50463302826023,
+        "entropic_max_weight": -0.007947309798763326
+      }
+    }
+  ],
+  "main_result_sha256": {
+    "summary.json": "eb105526bc2f35bafd953637e1b69cff7a2f35201533b4e2fa1bf52586d4828c",
+    "arrays.npz": "ea54dc6f6de163c1225f01180c4fac8d81f94458062d656293646554d7ec0cab",
+    "runs/paper_full_0/Entropic.pt": "0891979272b1ee3a68567269c2d134fb465fc9b7e588fe7d2d35bc72fe979ac5",
+    "runs/paper_stock_0/Entropic.pt": "96c4d1c8e5425061f172738a0b9a11355d489b47801cf17fc6cef8513d7cf263",
+    "runs/ours_0/Entropic.pt": "cad99dc238abffec9ad7f21a08347eeb7861933925d63922b5b485d73c3b88d9",
+    "runs/paper_full_1/Entropic.pt": "003c0ec6a97329a09415d29135d87b36cba625768c4c848ce91aadc5a2af9e83",
+    "runs/paper_stock_1/Entropic.pt": "c3b3ea7b77263796afcc2710c56578cc8e61b631d8dec57be2616cd120fe7b92",
+    "runs/ours_1/Entropic.pt": "e7b2a3db2d6c3a584f0630e327430f3d0ec9d4aee24f8f40dc2f427e554c8fc1",
+    "runs/paper_full_2/Entropic.pt": "17b555d1959e28f78f639005f278930e22ecd2a16f934ea2ba6f41c8c3f8a9bd",
+    "runs/paper_stock_2/Entropic.pt": "678084421994fa6de65c86e96895bd99cd3af474c10871546f3205fca42f0caf",
+    "runs/ours_2/Entropic.pt": "ec7ac184d0f4c03e6da8b0a884b5f895458f8d082c2e9329e989e608c7747ed8"
+  },
+  "source_sha256": {
+    "scripts/check_test_sample.py": "66808f431b71436f48d60d53bda90bbbfefed5ddab6c93e751b6c248f67d9ff7",
+    "scripts/market.py": "1d5f836535c8de3eccf6f6ef04850b83818fb1814bd79b89438199fb66e9d406",
+    "scripts/experiment.py": "4e399c96b866bf9cac8d1f383b4c9e79d84d6c2fd258179e3e0c0e1b27957864",
+    "scripts/accounting.py": "f3217ddc20f48b5f7739ab2b0b578b4731fb16298e86e32f17109a37e04a118e",
+    "scripts/paper.py": "7d3f8bbb745cc3578785d8f29d8c1ecfd129d846312f8ffcd143c81bd80cd75c",
+    "scripts/ours.py": "4baccea6b008ccca2d6ac55af2a5844d4c9eaf5289951e2e33b64198310f32e6"
+  },
+  "reproduction_command": "python scripts/check_test_sample.py --seed 50500 --paths 65536"
+}

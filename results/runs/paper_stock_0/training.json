@@ -1,0 +1,717 @@
+{
+  "config": {
+    "initial_price": 100.0,
+    "strike": 100.0,
+    "initial_variance": 0.04,
+    "long_run_variance": 0.04,
+    "mean_reversion": 1.0,
+    "vol_of_vol": 2.0,
+    "correlation": -0.7,
+    "number_of_days": 30,
+    "time_step": 0.0027397260273972603,
+    "simulation_substeps": 64,
+    "cost_rate": 0.001,
+    "variance_notional": 1000.0,
+    "alpha": 0.5,
+    "risk_aversion": 1.0,
+    "warmup_updates": 3000,
+    "continuation_updates": 3000,
+    "learning_rate": 0.005,
+    "entropic_learning_rate": 0.0005,
+    "gradient_limit": 10.0,
+    "batchnorm_epsilon": 0.001,
+    "batchnorm_momentum": 0.01,
+    "normalization_size": 8192,
+    "batch_size": 256,
+    "validation_size": 8192,
+    "test_size": 65536,
+    "validation_interval": 100,
+    "number_of_replicates": 3,
+    "display_replicate": 0,
+    "initialization_seed": 7000,
+    "training_seed": 10100,
+    "validation_seed": 20200,
+    "test_seed": 40400,
+    "torch_threads": 1
+  },
+  "runs": [
+    {
+      "run_id": "paper_stock_CVaR_0",
+      "loss_key": "loss_paper_stock_CVaR_0",
+      "family": "paper_stock",
+      "objective": "CVaR",
+      "replicate_id": 0,
+      "simulation_scheme": "exact_CIR_endpoints_mean_preserving_integral_stock_martingale_correction",
+      "parameter_count": 14850,
+      "warmup": {
+        "history": [
+          {
+            "update": 0,
+            "risk": 4.978783790784597,
+            "elapsed_seconds": 0.240464731999964
+          },
+          {
+            "update": 100,
+            "risk": 4.411586763898122,
+            "elapsed_seconds": 9.541108822999377
+          },
+          {
+            "update": 200,
+            "risk": 3.5095318583364583,
+            "elapsed_seconds": 20.00389679900036
+          },
+          {
+            "update": 300,
+            "risk": 2.898730174839087,
+            "elapsed_seconds": 30.138189097999202
+          },
+          {
+            "update": 400,
+            "risk": 2.8997247919566034,
+            "elapsed_seconds": 39.81192965199989
+          },
+          {
+            "update": 500,
+            "risk": 2.8014321210441597,
+            "elapsed_seconds": 49.561728450999
+          },
+          {
+            "update": 600,
+            "risk": 2.8282598539364505,
+            "elapsed_seconds": 59.38984348699887
+          },
+          {
+            "update": 700,
+            "risk": 2.747073184585346,
+            "elapsed_seconds": 69.2988584499999
+          },
+          {
+            "update": 800,
+            "risk": 2.8012791505410166,
+            "elapsed_seconds": 78.82753528099965
+          },
+          {
+            "update": 900,
+            "risk": 2.7111988427044422,
+            "elapsed_seconds": 87.17800327799887
+          },
+          {
+            "update": 1000,
+            "risk": 2.719867582265282,
+            "elapsed_seconds": 96.20260979399973
+          },
+          {
+            "update": 1100,
+            "risk": 2.7158745266159827,
+            "elapsed_seconds": 104.41660981399946
+          },
+          {
+            "update": 1200,
+            "risk": 2.703902443636526,
+            "elapsed_seconds": 114.12122763699881
+          },
+          {
+            "update": 1300,
+            "risk": 2.6921727127972437,
+            "elapsed_seconds": 121.82178520999878
+          },
+          {
+            "update": 1400,
+            "risk": 2.6876048469333984,
+            "elapsed_seconds": 129.86737845199968
+          },
+          {
+            "update": 1500,
+            "risk": 2.6727337536625244,
+            "elapsed_seconds": 137.96512874499967
+          },
+          {
+            "update": 1600,
+            "risk": 2.68370677621072,
+            "elapsed_seconds": 146.1969856100004
+          },
+          {
+            "update": 1700,
+            "risk": 2.675303150567051,
+            "elapsed_seconds": 155.05981819999943
+          },
+          {
+            "update": 1800,
+            "risk": 2.726455477959,
+            "elapsed_seconds": 163.71195762199932
+          },
+          {
+            "update": 1900,
+            "risk": 2.6658361275333173,
+            "elapsed_seconds": 172.13587728200037
+          },
+          {
+            "update": 2000,
+            "risk": 2.659006181873192,
+            "elapsed_seconds": 180.00265586299975
+          },
+          {
+            "update": 2100,
+            "risk": 2.6753849314559695,
+            "elapsed_seconds": 187.53087341299943
+          },
+          {
+            "update": 2200,
+            "risk": 2.663459851517688,
+            "elapsed_seconds": 195.150045037999
+          },
+          {
+            "update": 2300,
+            "risk": 2.672314253954351,
+            "elapsed_seconds": 202.70826497099915
+          },
+          {
+            "update": 2400,
+            "risk": 2.6687194502441622,
+            "elapsed_seconds": 209.96303871800046
+          },
+          {
+            "update": 2500,
+            "risk": 2.658346333449155,
+            "elapsed_seconds": 217.68290856099884
+          },
+          {
+            "update": 2600,
+            "risk": 2.6570582273720778,
+            "elapsed_seconds": 225.08143704199938
+          },
+          {
+            "update": 2700,
+            "risk": 2.6533225268864324,
+            "elapsed_seconds": 232.8819548219999
+          },
+          {
+            "update": 2800,
+            "risk": 2.646629627767669,
+            "elapsed_seconds": 241.58530831899952
+          },
+          {
+            "update": 2900,
+            "risk": 2.6640261029068015,
+            "elapsed_seconds": 249.37699878399872
+          },
+          {
+            "update": 3000,
+            "risk": 2.641572536110086,
+            "elapsed_seconds": 257.1881583719987
+          }
+        ],
+        "best_update": 3000,
+        "best_validation_risk": 2.641572536110086,
+        "threshold": 1.509274264723067,
+        "seconds": 257.2087245349994,
+        "clipped_updates": 230,
+        "learning_rate": 0.005,
+        "training_seed": 10100
+      },
+      "history": [
+        {
+          "update": 0,
+          "risk": 2.6415968222962682,
+          "elapsed_seconds": 0.17086177700002736
+        },
+        {
+          "update": 100,
+          "risk": 2.657629120759355,
+          "elapsed_seconds": 8.668195432001085
+        },
+        {
+          "update": 200,
+          "risk": 2.672469948409523,
+          "elapsed_seconds": 17.4511362860012
+        },
+        {
+          "update": 300,
+          "risk": 2.6645028006034743,
+          "elapsed_seconds": 26.05057766900063
+        },
+        {
+          "update": 400,
+          "risk": 2.6661434354618487,
+          "elapsed_seconds": 33.85163298800035
+        },
+        {
+          "update": 500,
+          "risk": 2.6721742930791006,
+          "elapsed_seconds": 41.38476913700106
+        },
+        {
+          "update": 600,
+          "risk": 2.6660950943965336,
+          "elapsed_seconds": 48.917329895000876
+        },
+        {
+          "update": 700,
+          "risk": 2.65281388684293,
+          "elapsed_seconds": 56.769138957000905
+        },
+        {
+          "update": 800,
+          "risk": 2.64597140465274,
+          "elapsed_seconds": 63.98001493300035
+        },
+        {
+          "update": 900,
+          "risk": 2.651468514105314,
+          "elapsed_seconds": 71.4982732059998
+        },
+        {
+          "update": 1000,
+          "risk": 2.6426519425819133,
+          "elapsed_seconds": 79.14059948700015
+        },
+        {
+          "update": 1100,
+          "risk": 2.6430908147120418,
+          "elapsed_seconds": 87.14348828900074
+        },
+        {
+          "update": 1200,
+          "risk": 2.651309576367062,
+          "elapsed_seconds": 95.19927016600013
+        },
+        {
+          "update": 1300,
+          "risk": 2.6473555519259158,
+          "elapsed_seconds": 102.55393318500137
+        },
+        {
+          "update": 1400,
+          "risk": 2.6432797507950614,
+          "elapsed_seconds": 110.13743309500023
+        },
+        {
+          "update": 1500,
+          "risk": 2.656125838351557,
+          "elapsed_seconds": 117.24171311999999
+        },
+        {
+          "update": 1600,
+          "risk": 2.638084794046251,
+          "elapsed_seconds": 124.90453644900117
+        },
+        {
+          "update": 1700,
+          "risk": 2.6528773720721963,
+          "elapsed_seconds": 133.8028112660013
+        },
+        {
+          "update": 1800,
+          "risk": 2.6453838324538506,
+          "elapsed_seconds": 141.9766020700008
+        },
+        {
+          "update": 1900,
+          "risk": 2.634662860770108,
+          "elapsed_seconds": 150.33227869000075
+        },
+        {
+          "update": 2000,
+          "risk": 2.6381942440295814,
+          "elapsed_seconds": 158.92430160300137
+        },
+        {
+          "update": 2100,
+          "risk": 2.6383619627165347,
+          "elapsed_seconds": 167.70069663100003
+        },
+        {
+          "update": 2200,
+          "risk": 2.644413211027543,
+          "elapsed_seconds": 175.870881285
+        },
+        {
+          "update": 2300,
+          "risk": 2.6530692910750515,
+          "elapsed_seconds": 184.37148625600094
+        },
+        {
+          "update": 2400,
+          "risk": 2.64998635599994,
+          "elapsed_seconds": 191.4563112520009
+        },
+        {
+          "update": 2500,
+          "risk": 2.6389509458322014,
+          "elapsed_seconds": 199.39275019600063
+        },
+        {
+          "update": 2600,
+          "risk": 2.6377924947191214,
+          "elapsed_seconds": 206.8676930649999
+        },
+        {
+          "update": 2700,
+          "risk": 2.636400579463808,
+          "elapsed_seconds": 214.67394844699993
+        },
+        {
+          "update": 2800,
+          "risk": 2.637713720427134,
+          "elapsed_seconds": 223.49125235700012
+        },
+        {
+          "update": 2900,
+          "risk": 2.6326443537099786,
+          "elapsed_seconds": 231.8986213019998
+        },
+        {
+          "update": 3000,
+          "risk": 2.645253920364896,
+          "elapsed_seconds": 240.67178549900018
+        }
+      ],
+      "best_update": 2900,
+      "best_validation_risk": 2.6326443537099786,
+      "threshold": 1.4983344307949849,
+      "seconds": 240.680276563,
+      "clipped_updates": 0,
+      "learning_rate": 0.005,
+      "training_seed": 10101
+    },
+    {
+      "run_id": "paper_stock_Entropic_0",
+      "loss_key": "loss_paper_stock_Entropic_0",
+      "family": "paper_stock",
+      "objective": "Entropic",
+      "replicate_id": 0,
+      "simulation_scheme": "exact_CIR_endpoints_mean_preserving_integral_stock_martingale_correction",
+      "parameter_count": 14850,
+      "warmup": {
+        "history": [
+          {
+            "update": 0,
+            "risk": 4.978783790784597,
+            "elapsed_seconds": 0.240464731999964
+          },
+          {
+            "update": 100,
+            "risk": 4.411586763898122,
+            "elapsed_seconds": 9.541108822999377
+          },
+          {
+            "update": 200,
+            "risk": 3.5095318583364583,
+            "elapsed_seconds": 20.00389679900036
+          },
+          {
+            "update": 300,
+            "risk": 2.898730174839087,
+            "elapsed_seconds": 30.138189097999202
+          },
+          {
+            "update": 400,
+            "risk": 2.8997247919566034,
+            "elapsed_seconds": 39.81192965199989
+          },
+          {
+            "update": 500,
+            "risk": 2.8014321210441597,
+            "elapsed_seconds": 49.561728450999
+          },
+          {
+            "update": 600,
+            "risk": 2.8282598539364505,
+            "elapsed_seconds": 59.38984348699887
+          },
+          {
+            "update": 700,
+            "risk": 2.747073184585346,
+            "elapsed_seconds": 69.2988584499999
+          },
+          {
+            "update": 800,
+            "risk": 2.8012791505410166,
+            "elapsed_seconds": 78.82753528099965
+          },
+          {
+            "update": 900,
+            "risk": 2.7111988427044422,
+            "elapsed_seconds": 87.17800327799887
+          },
+          {
+            "update": 1000,
+            "risk": 2.719867582265282,
+            "elapsed_seconds": 96.20260979399973
+          },
+          {
+            "update": 1100,
+            "risk": 2.7158745266159827,
+            "elapsed_seconds": 104.41660981399946
+          },
+          {
+            "update": 1200,
+            "risk": 2.703902443636526,
+            "elapsed_seconds": 114.12122763699881
+          },
+          {
+            "update": 1300,
+            "risk": 2.6921727127972437,
+            "elapsed_seconds": 121.82178520999878
+          },
+          {
+            "update": 1400,
+            "risk": 2.6876048469333984,
+            "elapsed_seconds": 129.86737845199968
+          },
+          {
+            "update": 1500,
+            "risk": 2.6727337536625244,
+            "elapsed_seconds": 137.96512874499967
+          },
+          {
+            "update": 1600,
+            "risk": 2.68370677621072,
+            "elapsed_seconds": 146.1969856100004
+          },
+          {
+            "update": 1700,
+            "risk": 2.675303150567051,
+            "elapsed_seconds": 155.05981819999943
+          },
+          {
+            "update": 1800,
+            "risk": 2.726455477959,
+            "elapsed_seconds": 163.71195762199932
+          },
+          {
+            "update": 1900,
+            "risk": 2.6658361275333173,
+            "elapsed_seconds": 172.13587728200037
+          },
+          {
+            "update": 2000,
+            "risk": 2.659006181873192,
+            "elapsed_seconds": 180.00265586299975
+          },
+          {
+            "update": 2100,
+            "risk": 2.6753849314559695,
+            "elapsed_seconds": 187.53087341299943
+          },
+          {
+            "update": 2200,
+            "risk": 2.663459851517688,
+            "elapsed_seconds": 195.150045037999
+          },
+          {
+            "update": 2300,
+            "risk": 2.672314253954351,
+            "elapsed_seconds": 202.70826497099915
+          },
+          {
+            "update": 2400,
+            "risk": 2.6687194502441622,
+            "elapsed_seconds": 209.96303871800046
+          },
+          {
+            "update": 2500,
+            "risk": 2.658346333449155,
+            "elapsed_seconds": 217.68290856099884
+          },
+          {
+            "update": 2600,
+            "risk": 2.6570582273720778,
+            "elapsed_seconds": 225.08143704199938
+          },
+          {
+            "update": 2700,
+            "risk": 2.6533225268864324,
+            "elapsed_seconds": 232.8819548219999
+          },
+          {
+            "update": 2800,
+            "risk": 2.646629627767669,
+            "elapsed_seconds": 241.58530831899952
+          },
+          {
+            "update": 2900,
+            "risk": 2.6640261029068015,
+            "elapsed_seconds": 249.37699878399872
+          },
+          {
+            "update": 3000,
+            "risk": 2.641572536110086,
+            "elapsed_seconds": 257.1881583719987
+          }
+        ],
+        "best_update": 3000,
+        "best_validation_risk": 2.641572536110086,
+        "threshold": 1.509274264723067,
+        "seconds": 257.2087245349994,
+        "clipped_updates": 230,
+        "learning_rate": 0.005,
+        "training_seed": 10100
+      },
+      "history": [
+        {
+          "update": 0,
+          "risk": 7.382467188523393,
+          "elapsed_seconds": 0.1961054969997349
+        },
+        {
+          "update": 100,
+          "risk": 5.695768398009429,
+          "elapsed_seconds": 8.588414941999872
+        },
+        {
+          "update": 200,
+          "risk": 4.663626355214198,
+          "elapsed_seconds": 16.017445018998842
+        },
+        {
+          "update": 300,
+          "risk": 4.257545869567686,
+          "elapsed_seconds": 23.861913636999816
+        },
+        {
+          "update": 400,
+          "risk": 3.982618986075165,
+          "elapsed_seconds": 31.457516659000248
+        },
+        {
+          "update": 500,
+          "risk": 3.958088653149554,
+          "elapsed_seconds": 40.42309478799871
+        },
+        {
+          "update": 600,
+          "risk": 3.6388952970555657,
+          "elapsed_seconds": 48.341192977999526
+        },
+        {
+          "update": 700,
+          "risk": 3.5585388593596825,
+          "elapsed_seconds": 56.498975218999476
+        },
+        {
+          "update": 800,
+          "risk": 3.5252973287907405,
+          "elapsed_seconds": 64.24706129199876
+        },
+        {
+          "update": 900,
+          "risk": 3.4047764333518202,
+          "elapsed_seconds": 72.05216028799987
+        },
+        {
+          "update": 1000,
+          "risk": 3.6371977441144097,
+          "elapsed_seconds": 80.22674745599943
+        },
+        {
+          "update": 1100,
+          "risk": 3.516080799654361,
+          "elapsed_seconds": 87.98531824599922
+        },
+        {
+          "update": 1200,
+          "risk": 3.4348393972124462,
+          "elapsed_seconds": 95.69451547599965
+        },
+        {
+          "update": 1300,
+          "risk": 3.4371184943447055,
+          "elapsed_seconds": 103.32055210599901
+        },
+        {
+          "update": 1400,
+          "risk": 3.3661460158459757,
+          "elapsed_seconds": 110.38530861099935
+        },
+        {
+          "update": 1500,
+          "risk": 3.4857395054026465,
+          "elapsed_seconds": 118.37058105799952
+        },
+        {
+          "update": 1600,
+          "risk": 3.279622413418945,
+          "elapsed_seconds": 126.42152460199941
+        },
+        {
+          "update": 1700,
+          "risk": 3.3390691263524204,
+          "elapsed_seconds": 133.82399829599854
+        },
+        {
+          "update": 1800,
+          "risk": 3.203382196373811,
+          "elapsed_seconds": 141.93345433099967
+        },
+        {
+          "update": 1900,
+          "risk": 3.192034331010545,
+          "elapsed_seconds": 150.15485831799924
+        },
+        {
+          "update": 2000,
+          "risk": 3.3477363504739177,
+          "elapsed_seconds": 158.1911106689986
+        },
+        {
+          "update": 2100,
+          "risk": 3.2206517941408883,
+          "elapsed_seconds": 166.2114264899992
+        },
+        {
+          "update": 2200,
+          "risk": 3.2225619385232793,
+          "elapsed_seconds": 173.85178857899882
+        },
+        {
+          "update": 2300,
+          "risk": 3.19851860287741,
+          "elapsed_seconds": 181.34086098999978
+        },
+        {
+          "update": 2400,
+          "risk": 3.2101927637443417,
+          "elapsed_seconds": 189.10055370199916
+        },
+        {
+          "update": 2500,
+          "risk": 3.189287381335358,
+          "elapsed_seconds": 197.15160243399987
+        },
+        {
+          "update": 2600,
+          "risk": 3.3238889952406083,
+          "elapsed_seconds": 204.7298433420001
+        },
+        {
+          "update": 2700,
+          "risk": 3.379869086622577,
+          "elapsed_seconds": 213.0213296410002
+        },
+        {
+          "update": 2800,
+          "risk": 3.2604769515778234,
+          "elapsed_seconds": 221.60197151899956
+        },
+        {
+          "update": 2900,
+          "risk": 3.5041300243272513,
+          "elapsed_seconds": 229.55172738999863
+        },
+        {
+          "update": 3000,
+          "risk": 3.047574631186375,
+          "elapsed_seconds": 238.08258017499975
+        }
+      ],
+      "best_update": 3000,
+      "best_validation_risk": 3.047574631186375,
+      "threshold": 4.799472367041871,
+      "seconds": 238.0967239169986,
+      "clipped_updates": 129,
+      "learning_rate": 0.0005,
+      "training_seed": 10101
+    }
+  ]
+}

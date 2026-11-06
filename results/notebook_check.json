@@ -1,0 +1,79 @@
+{
+  "status": "passed",
+  "engine": "In-process IPython with Jupyter inline matplotlib",
+  "code_cells_executed": 8,
+  "embedded_figures": [
+    {
+      "name": "paper_figure_02",
+      "sha256": "f4b13590e37b4dccd5a4b33970aaeb77173d3c5a7dbc9abb332a828644298104"
+    },
+    {
+      "name": "paper_figure_11",
+      "sha256": "25970b4251a148fc90c6aaec6901b2cfb8f78913346afdeb420ad2e5a99890e6"
+    },
+    {
+      "name": "our_paths",
+      "sha256": "69e10709f6cf30816c972f8c04707c0c4bf047466032bae6466ce631c631aa96"
+    },
+    {
+      "name": "our_learning",
+      "sha256": "00566a5466b5704c551760e3db5c4ed3f78f7c81859b7071e359654d6f03c3ce"
+    },
+    {
+      "name": "our_losses",
+      "sha256": "1f0fcca9b89bf648f4b575303d3696bd7d3db84a9510d554cf446d671d741f58"
+    },
+    {
+      "name": "comparison_risk",
+      "sha256": "4c8ee29fadaa86d055be674453c759565e36127fc524235bd77589baafe0769a"
+    },
+    {
+      "name": "comparison_tails",
+      "sha256": "2ce0a3d4ca97b1fedee105edd640d65b95598c1ddc2da383e4c58da444bba6b3"
+    }
+  ],
+  "original_figure_bytes_identical": true,
+  "training_or_simulation": false,
+  "source_and_results_unchanged": true,
+  "source_sha256": {
+    "scripts/plots.py": "40c3a695655581e88b8e8b0e05b7254e98c04dcd81a8d32b1861d9787edf53bf",
+    "scripts/settings.py": "f128d3b892deff009f8cddb1426c5f4dbe649bc709e6684d87bad50a86e314fe",
+    "scripts/general_nn.py": "f2074e01d58eafda3562c73c25440606c6821aa92a28bbce32e86576e07e051e",
+    "scripts/__init__.py": "f3ef21b45e56625ef8a7a97e2c9fb26f25d5f679747b7ac4d4526586c61cbb75",
+    "results/arrays.npz": "ea54dc6f6de163c1225f01180c4fac8d81f94458062d656293646554d7ec0cab",
+    "results/api_check.json": "c6531c0df156683581077f4fd031ff5524b7330b71148795ee22a63329c99eea",
+    "results/summary.json": "eb105526bc2f35bafd953637e1b69cff7a2f35201533b4e2fa1bf52586d4828c",
+    "results/entropic_tail_diagnostics.json": "8bfc9a79b6dc40e0d76fa48b5d28efc0af23da99a748734e7f4ee1f68d768aa4",
+    "results/refactor_check.json": "a97c77bf36db3c83a365ccebbc8ed5e1d55f02afcd772195ad16f2c4e0d42df6",
+    "results/market_check.json": "667938e79e64b32c6c3ba2240bf3e634e8ea1fb8e4ddf307aad595c23ac4f00f",
+    "results/method_checks.json": "83a2e6bcf4f648184636fdaef7e43d901954430e24cebf83cc48e9ecbc6ec5e4",
+    "results/test_sample_check.json": "b499e9c4a5ce27a218928d64aba97ab2c6baef248da86f758769c1b89f6af110",
+    "results/runs/paper_stock_1/Entropic.pt": "c3b3ea7b77263796afcc2710c56578cc8e61b631d8dec57be2616cd120fe7b92",
+    "results/runs/paper_stock_1/training.json": "c4e2b29694a1602fc9bc90ca8a38cd0b356bd106ab92aef9fbc225db4ee1a1cd",
+    "results/runs/paper_stock_1/CVaR.pt": "0562d38c500befe1706fa540704939c6499a69533f5f6e40c6c7b007ceafcbe3",
+    "results/runs/paper_full_0/Entropic.pt": "0891979272b1ee3a68567269c2d134fb465fc9b7e588fe7d2d35bc72fe979ac5",
+    "results/runs/paper_full_0/training.json": "96172d8590f35f5b2f1025949dfe18dfe603b46cc793c844abb9b971b83a2745",
+    "results/runs/paper_full_0/CVaR.pt": "8260dac763fd0c829b5a5ff326ff2a8d057e4af48c5558cf88621245867aef7c",
+    "results/runs/ours_2/Entropic.pt": "ec7ac184d0f4c03e6da8b0a884b5f895458f8d082c2e9329e989e608c7747ed8",
+    "results/runs/ours_2/training.json": "da6e5a1debca5aa64c31c1b23dc3a906631014515dccc9213f5715dc9f66f804",
+    "results/runs/ours_2/CVaR.pt": "c737f115241d065890f99db55dc3d50f4263939c49e52e7c2854fa43cec21c82",
+    "results/runs/ours_0/Entropic.pt": "cad99dc238abffec9ad7f21a08347eeb7861933925d63922b5b485d73c3b88d9",
+    "results/runs/ours_0/training.json": "bb4a6f99fcf2d1e3ed268d9edc09f78664ef2593972c6e56830db130a4990fca",
+    "results/runs/ours_0/CVaR.pt": "4929fdf707deb91b4a66c1ba8491308deefeebd834d7e5b5f8c5b750576725ba",
+    "results/runs/paper_stock_2/Entropic.pt": "678084421994fa6de65c86e96895bd99cd3af474c10871546f3205fca42f0caf",
+    "results/runs/paper_stock_2/training.json": "a62eb4fdaaa30e9c8c1f15ff2286758e32e9ff0a0610f0aa627ff138a5827a00",
+    "results/runs/paper_stock_2/CVaR.pt": "61c68c4a7732c291bbe2b56bba2ab2b48bea34f390ead3db87a2e5ceee7f3be2",
+    "results/runs/paper_stock_0/Entropic.pt": "96c4d1c8e5425061f172738a0b9a11355d489b47801cf17fc6cef8513d7cf263",
+    "results/runs/paper_stock_0/training.json": "538bbee31027c971ca7f29851bfb28e3fe5a5f0b1724ed1c0e468672f8422740",
+    "results/runs/paper_stock_0/CVaR.pt": "d55ac29ebd4a29aaf6d04b92f620420fff49671a08bb4669c8d6e080c30a1bb4",
+    "results/runs/paper_full_2/Entropic.pt": "17b555d1959e28f78f639005f278930e22ecd2a16f934ea2ba6f41c8c3f8a9bd",
+    "results/runs/paper_full_2/training.json": "679a6446f16cd34658badf0bbe21a7d18a92a51a3b45204698b35f78e79cdd08",
+    "results/runs/paper_full_2/CVaR.pt": "6963452bac6b6e88db059d5ca7ce0186d8a37e9ae41e40d8e7db106dd3510f64",
+    "results/runs/ours_1/Entropic.pt": "e7b2a3db2d6c3a584f0630e327430f3d0ec9d4aee24f8f40dc2f427e554c8fc1",
+    "results/runs/ours_1/training.json": "9ee6396735f9acc2252882b6ff772fdcc7c57cf1e2c299dc40fce94b661ddea4",
+    "results/runs/ours_1/CVaR.pt": "f57ad805bb8103f8db8a4ba8352e5ad1395291b924bcf3231c9db41d630a4b05",
+    "results/runs/paper_full_1/Entropic.pt": "003c0ec6a97329a09415d29135d87b36cba625768c4c848ce91aadc5a2af9e83",
+    "results/runs/paper_full_1/training.json": "85b9e6e60f2e6d0f924b6a86fd910a590a48bced44c1a718e0836be18cebbf06",
+    "results/runs/paper_full_1/CVaR.pt": "223d2a8102785840c7438233938e1711034ee7fd3e8c89cfca33e5ead385d336"
+  }
+}

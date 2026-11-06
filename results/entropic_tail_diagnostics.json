@@ -1,0 +1,387 @@
+{
+  "created_utc": "2026-11-06T08:03:31.662951+00:00",
+  "simulation_scheme": "exact_CIR_endpoints_mean_preserving_integral_stock_martingale_correction",
+  "test_seed": 40400,
+  "test_paths": 65536,
+  "risk_aversion": 1.0,
+  "training_performed": false,
+  "model_weights_changed": false,
+  "all_paths_retained_in_reported_metrics": true,
+  "scope": "Independent frozen-BN NumPy replay and two-asset cash ledgers on the largest-loss full-paper entropic paths.",
+  "interpretation": "Concentrated exponential weights describe sensitivity of this finite sample; they are not a confidence interval. Leave-largest-out calculations are diagnostics only.",
+  "path_indices": [
+    8038,
+    17266,
+    21881,
+    31781
+  ],
+  "market_paths": [
+    {
+      "path_index": 8038,
+      "terminal_stock": 89.63652683137335,
+      "payoff": 0.0,
+      "minimum_stock": 83.38127556802768,
+      "maximum_stock": 110.02777603951779,
+      "maximum_variance": 0.7228401499285375,
+      "maximum_variance_day": 30,
+      "terminal_raw_variance_claim": 0.020206788971022918
+    },
+    {
+      "path_index": 17266,
+      "terminal_stock": 92.53424352557828,
+      "payoff": 0.0,
+      "minimum_stock": 90.44501455848044,
+      "maximum_stock": 100.36830351631879,
+      "maximum_variance": 0.2109573584367901,
+      "maximum_variance_day": 29,
+      "terminal_raw_variance_claim": 0.0029001436822735822
+    },
+    {
+      "path_index": 21881,
+      "terminal_stock": 102.98281389396841,
+      "payoff": 2.9828138939684123,
+      "minimum_stock": 98.72013910352237,
+      "maximum_stock": 103.1452585603462,
+      "maximum_variance": 0.05342609108998616,
+      "maximum_variance_day": 19,
+      "terminal_raw_variance_claim": 0.0008155396498730138
+    },
+    {
+      "path_index": 31781,
+      "terminal_stock": 105.21849802034458,
+      "payoff": 5.218498020344583,
+      "minimum_stock": 95.87032575723914,
+      "maximum_stock": 105.38470645590392,
+      "maximum_variance": 0.13197163053005714,
+      "maximum_variance_day": 18,
+      "terminal_raw_variance_claim": 0.0030067774075276696
+    }
+  ],
+  "policies": {
+    "paper_full_Entropic_0": {
+      "validation_entropic_risk": 1.9551994584270425,
+      "test_entropic_risk": 9.25919301564701,
+      "exponential_weight_effective_paths": 1.3086076053985614,
+      "top_five_paths": [
+        {
+          "path_index": 21881,
+          "loss": 20.20286684095229,
+          "exponential_weight": 0.8635693571551029
+        },
+        {
+          "path_index": 31781,
+          "loss": 18.352361010221998,
+          "exponential_weight": 0.1357165316765542
+        },
+        {
+          "path_index": 36711,
+          "loss": 10.290687427990637,
+          "exponential_weight": 4.2804792959321664e-05
+        },
+        {
+          "path_index": 17786,
+          "loss": 6.126420832885922,
+          "exponential_weight": 6.652339379777351e-07
+        },
+        {
+          "path_index": 44039,
+          "loss": 5.784347146908912,
+          "exponential_weight": 4.7251291469551545e-07
+        }
+      ],
+      "diagnostic_risk_without_largest_one": 7.267269370036821,
+      "diagnostic_risk_without_largest_two": 2.0147516239058287,
+      "maximum_saved_loss_vs_independent_ledger_error": 6.210143510543276e-12,
+      "maximum_saved_cost_vs_independent_ledger_error": 5.213607323639735e-13,
+      "maximum_numpy_vs_torch_holding_error": 1.1432632618380012e-11,
+      "weight_file_sha256": "0891979272b1ee3a68567269c2d134fb465fc9b7e588fe7d2d35bc72fe979ac5",
+      "target_paths": [
+        {
+          "path_index": 8038,
+          "saved_loss": 4.840178661480765,
+          "independent_cash_ledger_loss": 4.840178661480785,
+          "payoff": 0.0,
+          "stock_trading_gain": -8.26069615984185,
+          "variance_trading_gain": 3.6958317384681862,
+          "stock_fees": 0.25710371110425423,
+          "variance_fees": 0.018210529002849585,
+          "maximum_abs_stock_holding": 0.8875290180579704,
+          "maximum_abs_variance_lot_holding": 0.3887091399666458,
+          "largest_daily_hedging_loss_day": 28,
+          "largest_daily_hedging_loss": 6.027323251568764,
+          "stock_holding_on_that_day": 0.8557465686092636,
+          "variance_lot_holding_on_that_day": 0.28771735570685975
+        },
+        {
+          "path_index": 17266,
+          "saved_loss": 1.9084374272811069,
+          "independent_cash_ledger_loss": 1.9084374272811098,
+          "payoff": 0.0,
+          "stock_trading_gain": -1.5064916970513642,
+          "variance_trading_gain": -0.24197263022415522,
+          "stock_fees": 0.1577797589792264,
+          "variance_fees": 0.0021933410263676005,
+          "maximum_abs_stock_holding": 0.7794245022140408,
+          "maximum_abs_variance_lot_holding": 0.6439800690806261,
+          "largest_daily_hedging_loss_day": 0,
+          "largest_daily_hedging_loss": 0.7432834772098657,
+          "stock_holding_on_that_day": 0.5755660499244886,
+          "variance_lot_holding_on_that_day": 0.33058267961902066
+        },
+        {
+          "path_index": 21881,
+          "saved_loss": 20.20286684095229,
+          "independent_cash_ledger_loss": 20.202866840955338,
+          "payoff": 2.9828138939684123,
+          "stock_trading_gain": -4.817529883334845,
+          "variance_trading_gain": -11.240240246130632,
+          "stock_fees": 0.9338867226743964,
+          "variance_fees": 0.2283960948470017,
+          "maximum_abs_stock_holding": 1.7217431268633787,
+          "maximum_abs_variance_lot_holding": 28.407861778383317,
+          "largest_daily_hedging_loss_day": 18,
+          "largest_daily_hedging_loss": 6.605025923174596,
+          "stock_holding_on_that_day": -1.7217431268633787,
+          "variance_lot_holding_on_that_day": -8.977414703516228
+        },
+        {
+          "path_index": 31781,
+          "saved_loss": 18.352361010221998,
+          "independent_cash_ledger_loss": 18.352361010228208,
+          "payoff": 5.218498020344583,
+          "stock_trading_gain": -9.991438955572077,
+          "variance_trading_gain": -1.6873436895625928,
+          "stock_fees": 0.8018204784547383,
+          "variance_fees": 0.6532598662942021,
+          "maximum_abs_stock_holding": 1.4111820611849948,
+          "maximum_abs_variance_lot_holding": 21.70330775455856,
+          "largest_daily_hedging_loss_day": 17,
+          "largest_daily_hedging_loss": 14.977408496551366,
+          "stock_holding_on_that_day": -0.9205446345429146,
+          "variance_lot_holding_on_that_day": -9.144529574370688
+        }
+      ]
+    },
+    "paper_full_Entropic_1": {
+      "validation_entropic_risk": 1.9440764884757602,
+      "test_entropic_risk": 3.694649446418353,
+      "exponential_weight_effective_paths": 1.4625482302512016,
+      "top_five_paths": [
+        {
+          "path_index": 17266,
+          "loss": 14.594913516543055,
+          "exponential_weight": 0.8268840338890042
+        },
+        {
+          "path_index": 36162,
+          "loss": 6.973500736844308,
+          "exponential_weight": 0.00040504855930233456
+        },
+        {
+          "path_index": 44039,
+          "loss": 6.560187097504525,
+          "exponential_weight": 0.0002679213105621166
+        },
+        {
+          "path_index": 4129,
+          "loss": 6.513232578918422,
+          "exponential_weight": 0.0002556319721923535
+        },
+        {
+          "path_index": 8038,
+          "loss": 5.244909181035745,
+          "exponential_weight": 7.191000478260039e-05
+        }
+      ],
+      "diagnostic_risk_without_largest_one": 1.9408711206134788,
+      "diagnostic_risk_without_largest_two": 1.9385438854943775,
+      "maximum_saved_loss_vs_independent_ledger_error": 2.028599510595086e-12,
+      "maximum_saved_cost_vs_independent_ledger_error": 2.425837308805967e-14,
+      "maximum_numpy_vs_torch_holding_error": 1.3162804179955856e-12,
+      "weight_file_sha256": "003c0ec6a97329a09415d29135d87b36cba625768c4c848ce91aadc5a2af9e83",
+      "target_paths": [
+        {
+          "path_index": 8038,
+          "saved_loss": 5.244909181035745,
+          "independent_cash_ledger_loss": 5.24490918103573,
+          "payoff": 0.0,
+          "stock_trading_gain": -8.336056085029867,
+          "variance_trading_gain": 3.388658112232537,
+          "stock_fees": 0.27608637586158613,
+          "variance_fees": 0.02142483237683763,
+          "maximum_abs_stock_holding": 0.9294263291668028,
+          "maximum_abs_variance_lot_holding": 0.42917218356764064,
+          "largest_daily_hedging_loss_day": 28,
+          "largest_daily_hedging_loss": 6.363473814127803,
+          "stock_holding_on_that_day": 0.9071585741560012,
+          "variance_lot_holding_on_that_day": 0.3389587587517733
+        },
+        {
+          "path_index": 17266,
+          "saved_loss": 14.594913516543055,
+          "independent_cash_ledger_loss": 14.594913516541027,
+          "payoff": 0.0,
+          "stock_trading_gain": -2.757223134545785,
+          "variance_trading_gain": -11.478224098071534,
+          "stock_fees": 0.2845463260923148,
+          "variance_fees": 0.07491995783140455,
+          "maximum_abs_stock_holding": 0.9859780215106004,
+          "maximum_abs_variance_lot_holding": 6.292074888817274,
+          "largest_daily_hedging_loss_day": 26,
+          "largest_daily_hedging_loss": 7.65855900961545,
+          "stock_holding_on_that_day": 0.3374341994182161,
+          "variance_lot_holding_on_that_day": -6.292074888817274
+        },
+        {
+          "path_index": 21881,
+          "saved_loss": 2.4411648632152443,
+          "independent_cash_ledger_loss": 2.4411648632152207,
+          "payoff": 2.9828138939684123,
+          "stock_trading_gain": 1.3317036612498454,
+          "variance_trading_gain": -0.6441588571356099,
+          "stock_fees": 0.1438986103563093,
+          "variance_fees": 0.001997163004751793,
+          "maximum_abs_stock_holding": 0.7753557147678916,
+          "maximum_abs_variance_lot_holding": 0.7169162087301659,
+          "largest_daily_hedging_loss_day": 17,
+          "largest_daily_hedging_loss": 0.6045740834304792,
+          "stock_holding_on_that_day": 0.5352252293659223,
+          "variance_lot_holding_on_that_day": 0.5290837478443329
+        },
+        {
+          "path_index": 31781,
+          "saved_loss": 2.613088023706977,
+          "independent_cash_ledger_loss": 2.6130880237069505,
+          "payoff": 5.218498020344583,
+          "stock_trading_gain": 2.497512756515924,
+          "variance_trading_gain": 0.315563645414807,
+          "stock_fees": 0.20353317099049492,
+          "variance_fees": 0.004133234302618538,
+          "maximum_abs_stock_holding": 0.8413720027847678,
+          "maximum_abs_variance_lot_holding": 0.6048719895260326,
+          "largest_daily_hedging_loss_day": 24,
+          "largest_daily_hedging_loss": 0.9275888011877707,
+          "stock_holding_on_that_day": 0.7295550370005432,
+          "variance_lot_holding_on_that_day": 0.3426863792463467
+        }
+      ]
+    },
+    "paper_full_Entropic_2": {
+      "validation_entropic_risk": 1.9483891858868194,
+      "test_entropic_risk": 1.9403038842977223,
+      "exponential_weight_effective_paths": 42452.58051388262,
+      "top_five_paths": [
+        {
+          "path_index": 8038,
+          "loss": 6.293471163010831,
+          "exponential_weight": 0.001185977902844312
+        },
+        {
+          "path_index": 33122,
+          "loss": 6.201489071828473,
+          "exponential_weight": 0.0010817559252271102
+        },
+        {
+          "path_index": 43750,
+          "loss": 5.400095679934413,
+          "exponential_weight": 0.00048538746293487755
+        },
+        {
+          "path_index": 36162,
+          "loss": 5.283930875577421,
+          "exponential_weight": 0.00043215428266497234
+        },
+        {
+          "path_index": 44039,
+          "loss": 5.246888068185948,
+          "exponential_weight": 0.00041643894194674845
+        }
+      ],
+      "diagnostic_risk_without_largest_one": 1.9391324614720258,
+      "diagnostic_risk_without_largest_two": 1.9380640933111035,
+      "maximum_saved_loss_vs_independent_ledger_error": 2.8461677459290513e-12,
+      "maximum_saved_cost_vs_independent_ledger_error": 7.009393065970926e-13,
+      "maximum_numpy_vs_torch_holding_error": 7.712275262861112e-12,
+      "weight_file_sha256": "17b555d1959e28f78f639005f278930e22ecd2a16f934ea2ba6f41c8c3f8a9bd",
+      "target_paths": [
+        {
+          "path_index": 8038,
+          "saved_loss": 6.293471163010831,
+          "independent_cash_ledger_loss": 6.2934711630108495,
+          "payoff": 0.0,
+          "stock_trading_gain": -9.580074586500645,
+          "variance_trading_gain": 3.5941561520622964,
+          "stock_fees": 0.2889772886724811,
+          "variance_fees": 0.018575439900020207,
+          "maximum_abs_stock_holding": 0.9367558573350147,
+          "maximum_abs_variance_lot_holding": 0.4402924991520714,
+          "largest_daily_hedging_loss_day": 28,
+          "largest_daily_hedging_loss": 6.270236744919881,
+          "stock_holding_on_that_day": 0.8853621413072585,
+          "variance_lot_holding_on_that_day": 0.2527713259774559
+        },
+        {
+          "path_index": 17266,
+          "saved_loss": 3.5461035500496965,
+          "independent_cash_ledger_loss": 3.5461035500468503,
+          "payoff": 0.0,
+          "stock_trading_gain": -1.1322342312814386,
+          "variance_trading_gain": -2.205835917207428,
+          "stock_fees": 0.2010238045238765,
+          "variance_fees": 0.007009597034094036,
+          "maximum_abs_stock_holding": 0.8248865937298238,
+          "maximum_abs_variance_lot_holding": 1.9465865307318935,
+          "largest_daily_hedging_loss_day": 18,
+          "largest_daily_hedging_loss": 0.9189508849421688,
+          "stock_holding_on_that_day": 0.2148393508335421,
+          "variance_lot_holding_on_that_day": -0.8403277266485127
+        },
+        {
+          "path_index": 21881,
+          "saved_loss": 2.070827359120087,
+          "independent_cash_ledger_loss": 2.0708273591202584,
+          "payoff": 2.9828138939684123,
+          "stock_trading_gain": 1.5409095385302447,
+          "variance_trading_gain": -0.44638238860055374,
+          "stock_fees": 0.1786706736701881,
+          "variance_fees": 0.0038699414113308648,
+          "maximum_abs_stock_holding": 0.8087775022625647,
+          "maximum_abs_variance_lot_holding": 1.4973113225991899,
+          "largest_daily_hedging_loss_day": 17,
+          "largest_daily_hedging_loss": 0.5141808546475755,
+          "stock_holding_on_that_day": 0.4521783112796224,
+          "variance_lot_holding_on_that_day": 0.39355423984180343
+        },
+        {
+          "path_index": 31781,
+          "saved_loss": 2.823639838779387,
+          "independent_cash_ledger_loss": 2.8236398387793145,
+          "payoff": 5.218498020344583,
+          "stock_trading_gain": 2.3906550268194953,
+          "variance_trading_gain": 0.2367107265083562,
+          "stock_fees": 0.22768608564486226,
+          "variance_fees": 0.004821486117739944,
+          "maximum_abs_stock_holding": 0.857850157633077,
+          "maximum_abs_variance_lot_holding": 0.8998428717098149,
+          "largest_daily_hedging_loss_day": 24,
+          "largest_daily_hedging_loss": 0.9311697255437341,
+          "stock_holding_on_that_day": 0.7417122379676402,
+          "variance_lot_holding_on_that_day": 0.3801147455686391
+        }
+      ]
+    }
+  },
+  "passed": true,
+  "source_and_result_sha256": {
+    "method_checks": "83a2e6bcf4f648184636fdaef7e43d901954430e24cebf83cc48e9ecbc6ec5e4",
+    "summary": "eb105526bc2f35bafd953637e1b69cff7a2f35201533b4e2fa1bf52586d4828c",
+    "arrays": "ea54dc6f6de163c1225f01180c4fac8d81f94458062d656293646554d7ec0cab",
+    "independent_replay_code": "136925bcfa7a476fd196d903fe883649b6efd049a364d5cb25c9be71784e82e4"
+  },
+  "variance_notional": 1000.0,
+  "holding_units": {
+    "stock": "shares",
+    "variance": "lots, each paying variance_notional times the raw integrated-variance claim"
+  },
+  "loss_definition": "Call payoff minus stock gains minus variance-claim gains plus opening and daily rebalancing fees; zero maturity fee."
+}

@@ -1,0 +1,331 @@
+{
+  "created_utc": "2026-11-06T08:23:26.674465+00:00",
+  "checks": {
+    "architecture": {
+      "passed": true,
+      "defaults": [
+        {
+          "method": "ours",
+          "parameter_count": 10590,
+          "daily_networks": 30
+        },
+        {
+          "method": "paper_full",
+          "parameter_count": 14850,
+          "daily_networks": 30
+        },
+        {
+          "method": "paper_stock",
+          "parameter_count": 14850,
+          "daily_networks": 30
+        }
+      ],
+      "custom_layer_shapes": [
+        [
+          3,
+          7
+        ],
+        [
+          7,
+          5
+        ],
+        [
+          5,
+          1
+        ]
+      ]
+    },
+    "batch_sources": {
+      "passed": true,
+      "dynamic_batch_fingerprints": [
+        "1e1ba00a17f8b8fc82b8e07ffb3b15543c811e066f7a9859d108b458c87d34e6",
+        "408efc49e0a4e1a46ee5bfb70a4d069cbf9f0f2f6550a3694126da54638f9ab7"
+      ],
+      "static_pool_size": 9,
+      "static_batch_size": 32,
+      "static_distinct_rows_per_batch": [
+        8,
+        9
+      ],
+      "supplied_pool_size": 7
+    },
+    "dynamic_training_and_roundtrip": {
+      "passed": true,
+      "method": "ours",
+      "dynamic_data": true,
+      "optimizer_updates_observed": 5,
+      "records_retained": 5,
+      "roundtrip_prediction_maximum_error": 0.0,
+      "test_paths_used_during_fit": false
+    },
+    "static_training_and_roundtrip": {
+      "passed": true,
+      "method": "paper_full",
+      "dynamic_data": false,
+      "optimizer_updates_observed": 5,
+      "records_retained": 5,
+      "roundtrip_prediction_maximum_error": 0.0,
+      "test_paths_used_during_fit": false
+    },
+    "plots": {
+      "passed": true,
+      "checks": [
+        {
+          "helper": "plot_paths",
+          "input": "ours",
+          "axes": 2
+        },
+        {
+          "helper": "plot_paths",
+          "input": "paper",
+          "axes": 2
+        },
+        {
+          "helper": "plot_paths",
+          "input": "both",
+          "axes": 2
+        },
+        {
+          "helper": "plot_paths",
+          "input": "cvar_only",
+          "axes": 2
+        },
+        {
+          "helper": "plot_paths",
+          "input": "same_family_modes",
+          "axes": 2
+        },
+        {
+          "helper": "plot_learning",
+          "input": "ours",
+          "axes": 2
+        },
+        {
+          "helper": "plot_learning",
+          "input": "paper",
+          "axes": 2
+        },
+        {
+          "helper": "plot_learning",
+          "input": "both",
+          "axes": 2
+        },
+        {
+          "helper": "plot_learning",
+          "input": "cvar_only",
+          "axes": 1
+        },
+        {
+          "helper": "plot_learning",
+          "input": "same_family_modes",
+          "axes": 2
+        },
+        {
+          "helper": "plot_losses",
+          "input": "ours",
+          "axes": 2
+        },
+        {
+          "helper": "plot_losses",
+          "input": "paper",
+          "axes": 2
+        },
+        {
+          "helper": "plot_losses",
+          "input": "both",
+          "axes": 2
+        },
+        {
+          "helper": "plot_losses",
+          "input": "cvar_only",
+          "axes": 1
+        },
+        {
+          "helper": "plot_losses",
+          "input": "same_family_modes",
+          "axes": 2
+        },
+        {
+          "helper": "plot_risk",
+          "input": "ours",
+          "axes": 2
+        },
+        {
+          "helper": "plot_risk",
+          "input": "paper",
+          "axes": 2
+        },
+        {
+          "helper": "plot_risk",
+          "input": "both",
+          "axes": 2
+        },
+        {
+          "helper": "plot_risk",
+          "input": "cvar_only",
+          "axes": 1
+        },
+        {
+          "helper": "plot_risk",
+          "input": "same_family_modes",
+          "axes": 2
+        },
+        {
+          "helper": "plot_loss_tails",
+          "input": "ours",
+          "axes": 2
+        },
+        {
+          "helper": "plot_loss_tails",
+          "input": "paper",
+          "axes": 2
+        },
+        {
+          "helper": "plot_loss_tails",
+          "input": "both",
+          "axes": 2
+        },
+        {
+          "helper": "plot_loss_tails",
+          "input": "cvar_only",
+          "axes": 1
+        },
+        {
+          "helper": "plot_loss_tails",
+          "input": "same_family_modes",
+          "axes": 2
+        }
+      ],
+      "training_or_simulation_performed": false,
+      "experiment_state_unchanged": true,
+      "single_objective_and_label_cases": "Copies of tiny fitted results used only to check plotting compatibility; no additional fit or performance claim."
+    },
+    "reference_migration": {
+      "passed": true,
+      "models_checked": 18,
+      "examples_per_model": 6,
+      "frozen_arrays_and_reported_scores_unchanged": true,
+      "checks": [
+        {
+          "run_id": "ours_CVaR_0",
+          "example_loss_maximum_error": 4.440892098500626e-16,
+          "example_cost_maximum_error": 4.163336342344337e-17
+        },
+        {
+          "run_id": "ours_Entropic_0",
+          "example_loss_maximum_error": 4.440892098500626e-16,
+          "example_cost_maximum_error": 8.326672684688674e-17
+        },
+        {
+          "run_id": "ours_CVaR_1",
+          "example_loss_maximum_error": 1.1102230246251565e-16,
+          "example_cost_maximum_error": 2.7755575615628914e-17
+        },
+        {
+          "run_id": "ours_Entropic_1",
+          "example_loss_maximum_error": 4.440892098500626e-16,
+          "example_cost_maximum_error": 2.7755575615628914e-17
+        },
+        {
+          "run_id": "ours_CVaR_2",
+          "example_loss_maximum_error": 1.1102230246251565e-16,
+          "example_cost_maximum_error": 1.3877787807814457e-17
+        },
+        {
+          "run_id": "ours_Entropic_2",
+          "example_loss_maximum_error": 0.0,
+          "example_cost_maximum_error": 2.7755575615628914e-17
+        },
+        {
+          "run_id": "paper_full_CVaR_0",
+          "example_loss_maximum_error": 9.769962616701378e-15,
+          "example_cost_maximum_error": 1.7486012637846216e-15
+        },
+        {
+          "run_id": "paper_full_Entropic_0",
+          "example_loss_maximum_error": 4.218847493575595e-15,
+          "example_cost_maximum_error": 2.3869795029440866e-15
+        },
+        {
+          "run_id": "paper_full_CVaR_1",
+          "example_loss_maximum_error": 3.019806626980426e-14,
+          "example_cost_maximum_error": 2.858824288409778e-15
+        },
+        {
+          "run_id": "paper_full_Entropic_1",
+          "example_loss_maximum_error": 1.6076029396572267e-13,
+          "example_cost_maximum_error": 2.67841304690819e-15
+        },
+        {
+          "run_id": "paper_full_CVaR_2",
+          "example_loss_maximum_error": 7.549516567451064e-15,
+          "example_cost_maximum_error": 1.6375789613221059e-15
+        },
+        {
+          "run_id": "paper_full_Entropic_2",
+          "example_loss_maximum_error": 2.6645352591003757e-15,
+          "example_cost_maximum_error": 2.914335439641036e-16
+        },
+        {
+          "run_id": "paper_stock_CVaR_0",
+          "example_loss_maximum_error": 3.552713678800501e-15,
+          "example_cost_maximum_error": 2.7755575615628914e-16
+        },
+        {
+          "run_id": "paper_stock_Entropic_0",
+          "example_loss_maximum_error": 8.881784197001252e-16,
+          "example_cost_maximum_error": 4.440892098500626e-16
+        },
+        {
+          "run_id": "paper_stock_CVaR_1",
+          "example_loss_maximum_error": 2.3092638912203256e-14,
+          "example_cost_maximum_error": 3.1780134079895106e-15
+        },
+        {
+          "run_id": "paper_stock_Entropic_1",
+          "example_loss_maximum_error": 3.9745984281580604e-14,
+          "example_cost_maximum_error": 5.35682609381638e-15
+        },
+        {
+          "run_id": "paper_stock_CVaR_2",
+          "example_loss_maximum_error": 8.43769498715119e-15,
+          "example_cost_maximum_error": 1.457167719820518e-15
+        },
+        {
+          "run_id": "paper_stock_Entropic_2",
+          "example_loss_maximum_error": 4.218847493575595e-15,
+          "example_cost_maximum_error": 7.674416657721395e-15
+        }
+      ]
+    }
+  },
+  "status": "passed",
+  "scope": "Two tiny actual fits; data and persistence boundaries; unchanged frozen scores and 18 six-path checkpoint replays. No large retraining or additional full test experiment.",
+  "source_sha256": {
+    "__init__.py": "f3ef21b45e56625ef8a7a97e2c9fb26f25d5f679747b7ac4d4526586c61cbb75",
+    "accounting.py": "f3217ddc20f48b5f7739ab2b0b578b4731fb16298e86e32f17109a37e04a118e",
+    "check_experiment.py": "6b514c53f3ad1368bb2bd8d2948609c5795ca8efff6c72fc3e4f1cfc73175b16",
+    "config.py": "75ff9ff9fb75e41cfa8fab33656b5a74abc4f240405d6cca20a1530abcebbed6",
+    "data.py": "1afe497823c373f5baf1e44566d3b36592eacb08ebf3ce5ab242735349ab741e",
+    "experiment.py": "cc858db7a0ec2f54af0240c0a767bf88e0592a53d9cd83d73cc4476911f38af8",
+    "heston_pricing.py": "602354b6d8e80bd9f60aa124719cb4cd228da83fe904265592e1fe1923850551",
+    "market.py": "1d5f836535c8de3eccf6f6ef04850b83818fb1814bd79b89438199fb66e9d406",
+    "networks.py": "e437bc65eac2a894b8d9f1d6b0d725f4ce268f2040fbce52a9f2062086dee7bc",
+    "ours.py": "b4759b423712006609eaf63d3635d5309affd62e51645287f0d23e0f33e64f70",
+    "paper.py": "927f3c5cd62792b6ca60a2f29652669c1e9bd91be1adfa479271f93699364865",
+    "plots.py": "a4222154240d3a391f5b747293e3d82d46bf2867360acdbd13e337017b6f6b42",
+    "risk.py": "282ab9bd6d78bd17160b6afc8eb14bba77974f2563b6319f9cd9323d00476501",
+    "run_experiment.py": "52e9403474fdf65f6ca22ae86afc22636cd4e47b212eff375b163f7c01275016",
+    "settings.py": "153f2bfc03fe34987c6e0f4c54dca20394788ff13b404d9c683ec7e4a84ce0d7",
+    "storage.py": "4b72e1724792137116f1635ff4bd4d7878142aa91ee814a61d91039ae3fe28b4",
+    "training.py": "1a6ccda6cc326ecef6c6a2335ec19c2a90d766288ef3db649ba256d182d22001"
+  },
+  "post_audit_edits": [
+    {
+      "file": "scripts/plots.py",
+      "change": "Two explanatory caption edits: clarify that test paths are for evaluation, and explain published histogram bar heights. No computational logic changed.",
+      "current_sha256": "cc51851ed3981c4d46849a60c518749f05f0edb6d9633d6a11944ad4720c4a8f",
+      "verification": "All seven figures were executed and inspected after these caption edits; see notebook_check.json."
+    }
+  ]
+}

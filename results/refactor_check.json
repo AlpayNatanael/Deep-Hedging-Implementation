@@ -1,0 +1,401 @@
+{
+  "created_utc": "2026-11-06T09:06:21.154725+00:00",
+  "historical_fixtures_are_manufactured_software_tests_only": true,
+  "checks": {
+    "defaults_and_generic_outputs": {
+      "passed": true,
+      "defaults": [
+        {
+          "family": "ours",
+          "parameters": 10590,
+          "shapes": [
+            [
+              3,
+              16
+            ],
+            [
+              16,
+              16
+            ],
+            [
+              16,
+              1
+            ]
+          ]
+        },
+        {
+          "family": "paper_full",
+          "parameters": 14850,
+          "shapes": [
+            [
+              4,
+              17
+            ],
+            [
+              17,
+              17
+            ],
+            [
+              17,
+              2
+            ]
+          ]
+        },
+        {
+          "family": "paper_stock",
+          "parameters": 14850,
+          "shapes": [
+            [
+              4,
+              17
+            ],
+            [
+              17,
+              17
+            ],
+            [
+              17,
+              2
+            ]
+          ]
+        }
+      ],
+      "generic_stocks": 2,
+      "generic_trading_instruments": 3,
+      "both_methods_use_all_generic_outputs": true
+    },
+    "generic_accounting": {
+      "passed": true,
+      "fixture_is_manufactured_test_data": true,
+      "expected_loss": -18.89975,
+      "expected_cost": 1.20025,
+      "maximum_cash_ledger_error": 1.7763568394002505e-14,
+      "per_instrument_multipliers_costs_and_cashflows_checked": true
+    },
+    "dynamic_training": {
+      "passed": true,
+      "method": "ours",
+      "dynamic_data": true,
+      "traded_instruments": 2,
+      "optimizer_updates_observed": 5,
+      "test_paths_used_in_training": false
+    },
+    "static_training": {
+      "passed": true,
+      "method": "paper",
+      "dynamic_data": false,
+      "traded_instruments": 2,
+      "optimizer_updates_observed": 5,
+      "test_paths_used_in_training": false
+    },
+    "historical_evaluation": {
+      "passed": true,
+      "fixture_is_manufactured_not_real_data": true,
+      "maximum_independent_cash_ledger_error": 7.549516567451064e-15,
+      "observed_payoffs_and_interval_cashflows_used": true,
+      "causal_metadata_and_missing_fields_rejected": true,
+      "historical_reevaluation_uses_existing_data_only": true,
+      "historical_replacement_data_and_synthetic_delta_rejected": true,
+      "parent_main_results_and_models_unchanged": true
+    },
+    "dynamic_roundtrip": {
+      "passed": true,
+      "prediction_maximum_error": 0.0,
+      "historical_views_roundtripped": 1,
+      "states_data_histories_measurements_and_results_preserved": true
+    },
+    "static_roundtrip": {
+      "passed": true,
+      "prediction_maximum_error": 0.0,
+      "historical_views_roundtripped": 0,
+      "states_data_histories_measurements_and_results_preserved": true
+    },
+    "saved_results": {
+      "passed": true,
+      "checkpoints_checked": 18,
+      "saved_scores_and_arrays_unchanged": true,
+      "comparisons": [
+        {
+          "run_id": "ours_CVaR_0",
+          "example_loss_error": 2.220446049250313e-16,
+          "example_cost_error": 2.7755575615628914e-17
+        },
+        {
+          "run_id": "ours_Entropic_0",
+          "example_loss_error": 4.440892098500626e-16,
+          "example_cost_error": 6.938893903907228e-17
+        },
+        {
+          "run_id": "ours_CVaR_1",
+          "example_loss_error": 2.220446049250313e-16,
+          "example_cost_error": 1.3877787807814457e-17
+        },
+        {
+          "run_id": "ours_Entropic_1",
+          "example_loss_error": 4.440892098500626e-16,
+          "example_cost_error": 4.163336342344337e-17
+        },
+        {
+          "run_id": "ours_CVaR_2",
+          "example_loss_error": 2.220446049250313e-16,
+          "example_cost_error": 1.3877787807814457e-17
+        },
+        {
+          "run_id": "ours_Entropic_2",
+          "example_loss_error": 2.220446049250313e-16,
+          "example_cost_error": 2.7755575615628914e-17
+        },
+        {
+          "run_id": "paper_full_CVaR_0",
+          "example_loss_error": 9.769962616701378e-15,
+          "example_cost_error": 1.7486012637846216e-15
+        },
+        {
+          "run_id": "paper_full_Entropic_0",
+          "example_loss_error": 4.218847493575595e-15,
+          "example_cost_error": 2.3869795029440866e-15
+        },
+        {
+          "run_id": "paper_full_CVaR_1",
+          "example_loss_error": 3.019806626980426e-14,
+          "example_cost_error": 2.831068712794149e-15
+        },
+        {
+          "run_id": "paper_full_Entropic_1",
+          "example_loss_error": 1.6076029396572267e-13,
+          "example_cost_error": 2.6645352591003757e-15
+        },
+        {
+          "run_id": "paper_full_CVaR_2",
+          "example_loss_error": 7.549516567451064e-15,
+          "example_cost_error": 1.6653345369377348e-15
+        },
+        {
+          "run_id": "paper_full_Entropic_2",
+          "example_loss_error": 2.6645352591003757e-15,
+          "example_cost_error": 2.7755575615628914e-16
+        },
+        {
+          "run_id": "paper_stock_CVaR_0",
+          "example_loss_error": 3.552713678800501e-15,
+          "example_cost_error": 2.7755575615628914e-16
+        },
+        {
+          "run_id": "paper_stock_Entropic_0",
+          "example_loss_error": 8.881784197001252e-16,
+          "example_cost_error": 4.440892098500626e-16
+        },
+        {
+          "run_id": "paper_stock_CVaR_1",
+          "example_loss_error": 2.3092638912203256e-14,
+          "example_cost_error": 3.1780134079895106e-15
+        },
+        {
+          "run_id": "paper_stock_Entropic_1",
+          "example_loss_error": 3.9745984281580604e-14,
+          "example_cost_error": 5.35682609381638e-15
+        },
+        {
+          "run_id": "paper_stock_CVaR_2",
+          "example_loss_error": 8.43769498715119e-15,
+          "example_cost_error": 1.4849232954361469e-15
+        },
+        {
+          "run_id": "paper_stock_Entropic_2",
+          "example_loss_error": 4.218847493575595e-15,
+          "example_cost_error": 7.674416657721395e-15
+        }
+      ]
+    },
+    "plots": {
+      "passed": true,
+      "checks": [
+        {
+          "helper": "plot_paths",
+          "input": "ours_multi",
+          "axes": 2
+        },
+        {
+          "helper": "plot_paths",
+          "input": "paper",
+          "axes": 2
+        },
+        {
+          "helper": "plot_paths",
+          "input": "matched",
+          "axes": 2
+        },
+        {
+          "helper": "plot_paths",
+          "input": "historical_test_fixture",
+          "axes": 2
+        },
+        {
+          "helper": "plot_learning",
+          "input": "ours_multi",
+          "axes": 2
+        },
+        {
+          "helper": "plot_learning",
+          "input": "paper",
+          "axes": 2
+        },
+        {
+          "helper": "plot_learning",
+          "input": "matched",
+          "axes": 2
+        },
+        {
+          "helper": "plot_learning",
+          "input": "historical_test_fixture",
+          "axes": 2
+        },
+        {
+          "helper": "plot_losses",
+          "input": "ours_multi",
+          "axes": 2
+        },
+        {
+          "helper": "plot_losses",
+          "input": "paper",
+          "axes": 2
+        },
+        {
+          "helper": "plot_losses",
+          "input": "matched",
+          "axes": 2
+        },
+        {
+          "helper": "plot_losses",
+          "input": "historical_test_fixture",
+          "axes": 2
+        },
+        {
+          "helper": "plot_risk",
+          "input": "ours_multi",
+          "axes": 2
+        },
+        {
+          "helper": "plot_risk",
+          "input": "paper",
+          "axes": 2
+        },
+        {
+          "helper": "plot_risk",
+          "input": "matched",
+          "axes": 2
+        },
+        {
+          "helper": "plot_risk",
+          "input": "historical_test_fixture",
+          "axes": 2
+        },
+        {
+          "helper": "plot_loss_tails",
+          "input": "ours_multi",
+          "axes": 2
+        },
+        {
+          "helper": "plot_loss_tails",
+          "input": "paper",
+          "axes": 2
+        },
+        {
+          "helper": "plot_loss_tails",
+          "input": "matched",
+          "axes": 2
+        },
+        {
+          "helper": "plot_loss_tails",
+          "input": "historical_test_fixture",
+          "axes": 2
+        }
+      ],
+      "training_or_simulation": false,
+      "historical_graph_fixture_is_test_only": true
+    },
+    "oracle_preservation": {
+      "passed": true,
+      "preserved_financial_files": 29,
+      "figures_pixel_identical": [
+        {
+          "figure": "plot_learning.png",
+          "shape": [
+            490,
+            1150,
+            4
+          ],
+          "pixel_sha256": "5813a6a8a42df05fe49324741a7197a5cda1fd95bb1512c2e23fac34d36c4416"
+        },
+        {
+          "figure": "plot_loss_tails.png",
+          "shape": [
+            500,
+            1150,
+            4
+          ],
+          "pixel_sha256": "3f55ac80404e54850e05bb5882eff1fcca6f18385f4c8addb512a24a7d62f6ab"
+        },
+        {
+          "figure": "plot_losses.png",
+          "shape": [
+            490,
+            1150,
+            4
+          ],
+          "pixel_sha256": "bffc065bd48551e9bbab4b3eb5787d9830c90cf5c06bd5d8e8dfbdfa7ed6aea0"
+        },
+        {
+          "figure": "plot_paths.png",
+          "shape": [
+            480,
+            1150,
+            4
+          ],
+          "pixel_sha256": "b1fdf906d0c1807cfaa1cb71febcc9289f317070f2a9e1e9b6ae3424aa81c1f0"
+        },
+        {
+          "figure": "plot_risk.png",
+          "shape": [
+            520,
+            1150,
+            4
+          ],
+          "pixel_sha256": "40f11d6174327d5f3e75224fc0cce00461bcf4ad0654786085e8c546135b3b24"
+        },
+        {
+          "figure": "published_figure_11.png",
+          "shape": [
+            720,
+            1050,
+            4
+          ],
+          "pixel_sha256": "b93ca204247671766a11923ff0d6943dd3da58f276d74a1fb5020cd7a2afa688"
+        },
+        {
+          "figure": "published_figure_2.png",
+          "shape": [
+            720,
+            1050,
+            4
+          ],
+          "pixel_sha256": "bb1bc673715e44c83fd2bb06494ea771bf51470b10e3cd4dfbd9617151fcabdd"
+        }
+      ],
+      "small_market_maximum_errors": {
+        "prices": 0.0,
+        "variances": 0.0
+      },
+      "oracle_financial_files_unchanged": true
+    }
+  },
+  "status": "passed",
+  "scope": "Two tiny five-update fits; no full retraining or new full-sized financial experiment.",
+  "source_sha256": {
+    "scripts/__init__.py": "f3ef21b45e56625ef8a7a97e2c9fb26f25d5f679747b7ac4d4526586c61cbb75",
+    "scripts/general_nn.py": "f2074e01d58eafda3562c73c25440606c6821aa92a28bbce32e86576e07e051e",
+    "scripts/plots.py": "40c3a695655581e88b8e8b0e05b7254e98c04dcd81a8d32b1861d9787edf53bf",
+    "scripts/settings.py": "f128d3b892deff009f8cddb1426c5f4dbe649bc709e6684d87bad50a86e314fe",
+    "checks/check_refactor.py": "f3d52552f4171717e9cfde791cc727600ed220d03fa8b8e6d8899fca054d694d"
+  }
+}

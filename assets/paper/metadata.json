@@ -1,0 +1,115 @@
+{
+  "paper": {
+    "title": "Deep Hedging",
+    "authors": [
+      "Hans Buehler",
+      "Lukas Gonon",
+      "Josef Teichmann",
+      "Ben Wood"
+    ],
+    "arxiv_id": "1802.03042v1",
+    "year": 2018,
+    "source_url": "https://arxiv.org/html/1802.03042v1",
+    "pdf_url": "https://arxiv.org/pdf/1802.03042v1",
+    "source_pdf_sha256": "745d3ad829cc0b7734d550ee3dfe5ffdb35074983d41381936b207b3182a0c1e"
+  },
+  "asset_provenance": {
+    "kind": "Original author figures",
+    "original_svgs_preserved": true,
+    "png_rendering": "Unmodified SVG artwork rendered by PyMuPDF at 1800 pixels wide.",
+    "visual_verification": "Both PNGs inspected and matched against the corresponding figures on PDF pages 24 and 29.",
+    "data_redrawn_or_digitized": false,
+    "our_simulations_used_in_these_images": false
+  },
+  "shared_paper_setup": {
+    "market": "Heston",
+    "initial_stock": 100.0,
+    "strike": 100.0,
+    "initial_variance": 0.04,
+    "long_run_variance": 0.04,
+    "mean_reversion": 1.0,
+    "volatility_of_variance": 2.0,
+    "correlation": -0.7,
+    "interest_rate": 0.0,
+    "trading_intervals": 30,
+    "time_step_years": 0.0027397260273972603,
+    "hedging_instruments": [
+      "stock",
+      "idealized variance claim"
+    ],
+    "architecture": "30 independent 4-17-17-2 networks; ReLU hidden layers, batch normalization, linear output.",
+    "reference_sections": [
+      "5.1",
+      "5.2",
+      "5.3"
+    ]
+  },
+  "figures": {
+    "2": {
+      "number": 2,
+      "title": "Published Figure 2: learned hedge and model hedge",
+      "image": "assets/paper/figure_02.png",
+      "original_svg": "assets/paper/figure_02.svg",
+      "source_url": "https://arxiv.org/html/1802.03042v1#S5.F2",
+      "original_image_url": "https://arxiv.org/html/1802.03042v1/fig0.svg",
+      "pdf_page": 24,
+      "original_caption": "Comparison of model hedge and deep hedge associated to $50\\%$-expected shortfall criterion.",
+      "setup": {
+        "objective": "CVaR",
+        "alpha": 0.5,
+        "cost_rate": 0.0,
+        "reported_risk_adjusted_price": 1.94,
+        "test_paths_reported_in_section_5_2": 1000000,
+        "common_premium_reported_approx": 1.69
+      },
+      "axes": {
+        "horizontal": "Terminal P&L $q-L$",
+        "vertical": "Number of simulated outcomes in a bin"
+      },
+      "interpretation_markdown": "Blue bars show the $50\\%$-CVaR hedge; orange bars show the model hedge. The horizontal axis is terminal profit and loss, $q-L$, using the same premium $q\\approx1.69$. Negative values are losses. Bar heights count outcomes. Both distributions concentrate near zero and have similar shapes: in this zero-cost example, the learned hedge behaves much like the model hedge.",
+      "comparison_note_markdown": "Our saved runs use $c=0.001$ and different training and simulation choices. Our stock-delta benchmark trades only stock; the published model hedge also trades the variance claim. Compare distribution shapes and tails while keeping these setup differences explicit. Bar heights also depend on sample counts and bin widths.",
+      "display_width": 760,
+      "sha256": {
+        "svg": "a2001af85bdfa533fe4c25b1f591bea2abf5bd7079037dc1b3cfdb3c1f63d554",
+        "png": "17f87f142a54fd92bbcdb1b54f6e83c43c32712ce5b52260de588f6262f5e011"
+      },
+      "visually_verified": true
+    },
+    "11": {
+      "number": 11,
+      "title": "Published Figure 11: trading costs and entropic pricing",
+      "image": "assets/paper/figure_11.png",
+      "original_svg": "assets/paper/figure_11.svg",
+      "source_url": "https://arxiv.org/html/1802.03042v1#S5.F11",
+      "original_image_url": "https://arxiv.org/html/1802.03042v1/asymptotics.svg",
+      "pdf_page": 29,
+      "original_caption": "Heston model price asymptotics",
+      "setup": {
+        "objective": "Entropic risk",
+        "risk_aversion": 1.0,
+        "cost_rates": [
+          0.0009765625,
+          0.001953125,
+          0.00390625,
+          0.0078125,
+          0.015625
+        ],
+        "displayed_fitted_slope": 0.71,
+        "numerical_price_reference": "Risk-neutral Heston value q; the displayed axis labels the reference p_0.",
+        "reference_explanation": "Section 5.3 states that the numerical plots compare with q, ignoring the separate discrete-rebalancing premium."
+      },
+      "axes": {
+        "horizontal": "$\\log(\\varepsilon)$",
+        "vertical": "$\\log(p_\\varepsilon-p_0)$"
+      },
+      "interpretation_markdown": "Red dots are the authors' results at five trading-cost rates; the blue line is a fitted trend. Moving right means higher costs, and moving up means a larger price premium. The slope $0.71$ describes approximately power-law scaling over this tested range. It concerns the effect of costs. The axis uses $p_0$; Section 5.3 explains that the numerical reference is $q$.",
+      "comparison_note_markdown": "Our saved comparison fixes $c=0.001$, so it does not estimate this cost-scaling slope. This original figure motivates a later cost sweep. Our current graphs compare networks and risk objectives under common settings; their values should not be overlaid as matched replications of these published points.",
+      "display_width": 760,
+      "sha256": {
+        "svg": "4d0277cd6f8f09c0aff0b3bcdb96f59f07951cabb64626bf2799c70eef2d6115",
+        "png": "2c665298ec4ce2db7250fa17715514d4a8c87b5797073a3e405cd8f21a2725d1"
+      },
+      "visually_verified": true
+    }
+  }
+}
