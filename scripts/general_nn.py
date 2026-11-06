@@ -440,7 +440,7 @@ class generalNN:
     # Output: a _TradingPolicy with independently initialized daily layers;
     # this function does not move the network to a GPU.
     def _make_network(self, replicate=0):
-        """"This function creates a new, untrained trading policy with reproducible initial weights"""
+        """This function creates a new, untrained trading policy with reproducible initial weights"""
         with torch.random.fork_rng(devices=[]):
             torch.manual_seed(self.settings.initialization_seed + replicate)
             return _TradingPolicy(self.settings, self.method)
@@ -450,7 +450,7 @@ class generalNN:
     # name order match this experiment's settings.
     # Return the checked DataSet, or raise an error for incompatible data.
     def _check_data(self, data):
-        """"Checks that the data in the right format, with the right number of days, stocks, and instruments for this experiment."""
+        """Checks that the data in the right format, with the right number of days, stocks, and instruments for this experiment."""
         if isinstance(data, dict):
             data = DataSet(**data)
         if not isinstance(data, DataSet):
@@ -473,7 +473,7 @@ class generalNN:
     # Output: no value; raise an error on a detected conflict. Passing these
     # checks does not prove independence or rule out all partial duplication.
     def _check_separation(self, data, split):
-        """"Checks that a new dataset is separate from training, validation, test, or historical data already in the experiment. It rejects reused seeds, identical simulated scenarios, or overlapping date ranges. """
+        """Checks that a new dataset is separate from training, validation, test, or historical data already in the experiment. It rejects reused seeds, identical simulated scenarios, or overlapping date ranges. """
         known_seeds = {self.settings.training_seed + 100 * replicate + stage
                        for replicate in range(self.settings.number_of_replicates) for stage in (0, 1)}
         if split in {"test", "historical"}:
@@ -555,7 +555,7 @@ class generalNN:
     # Use the configured sizes and seeds; keep any already stored datasets.
     # Return this experiment. This step prepares data but does not train.
     def prepare_data(self, include_test=True):
-        """"Create the validation data, optionally create the test data, and create a fixed training dataset only when you are using static training. """
+        """Create the validation data, optionally create the test data, and create a fixed training dataset only when you are using static training. """
         torch.set_num_threads(self.settings.torch_threads)
         splits = [("validation", self.settings.validation_size, self.settings.validation_seed)]
         if not self.dynamic_data:
