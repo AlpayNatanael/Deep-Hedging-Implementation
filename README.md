@@ -1,50 +1,31 @@
-# Deep Hedging with the Heston Model and Data-Driven Strategies
+# Deep Hedging in the Heston Model
 
-## Project Goal
+**How much information does a neural network need to hedge an option portfolio effectively?** This project studies neural hedging with transaction costs, working toward portfolio compression: representing a portfolio with less information while preserving hedging performance.
 
-This project implements and extends the deep hedging methodology outlined in [*Deep Hedging*](https://arxiv.org/abs/1802.03042) by Buehler et al. (2018), specifically incorporating the Heston stochastic volatility model. The project aims to:
+Our current experiments compare neural-network designs trained on fixed datasets or fresh simulated batches in Heston markets. Strategies trade stock alone or stock together with variance claims and are evaluated using CVaR, entropic risk, and profit-and-loss distributions. The implementation builds on [*Deep Hedging* by Buehler et al.](https://arxiv.org/abs/1802.03042).
 
-- **Reproduce** the original deep hedging approach using pre-generated training data
-- **Develop** a modified, data-driven approach in which stock price paths are simulated dynamically at each training iteration using the Heston model, rather than being fixed in advance
-- **Compare** the performance of the traditional shared-weights neural network with the step-specific, parameterised networks described in the paper, where each time step $k$ has its own independent parameter set $\theta_k$:
+**Preliminary results.** In our initial single-call experiment, our network achieves lower test CVaR than our paper-style implementation, both with stock-only trading and when both networks can trade a variance claim. These results are preliminary, with network design and training-data mode varied together.
 
-$$\delta_k^\theta = F^{\theta_k}(I_k,\, \delta_{k-1}^\theta)$$
+## Experiments
 
-- **Analyse** differences in risk metrics (CVaR, entropic risk) and overall hedging effectiveness between the two strategies
+| Notebook | Description |
+|---|---|
+| [Single_Call_Comparison.ipynb](https://github.com/AlpayNatanael/Deep-Hedging-Implementation/blob/main/Single_Call_Comparison.ipynb) | Hedge one call using stock alone or stock plus a variance claim. Compare neural strategies with classical Heston hedges. |
+| [Large_Portfoloio_Comparison.ipynb](https://github.com/AlpayNatanael/Deep-Hedging-Implementation/blob/main/Large_Portfoloio_Comparison.ipynb) | Hedge a portfolio of calls on three simulated stocks and compare fixed-data and fresh-batch training. |
 
----
+## Getting started
 
-## Directory Structure
+From the repository folder:
 
-```
-.
-├── figures/
-├── scripts/
-│   ├── deep_hedging_original.py
-│   └── deep_hedging_step_specific.py
-└── deep_hedging_experiment.ipynb
+```bash
+python -m pip install -r environment/requirements.txt
+python -m notebook
 ```
 
-### `figures/`
-Contains images and plots generated during experiments, illustrating the overall performance comparisons between models and strategies.
+Open a comparison notebook and run its cells in order. Running the training cells fits new models; saved outputs can be viewed directly on GitHub.
 
-### `scripts/`
-A folder housing two Python class files:
+## Code
 
-- **`deep_hedging_original.py`**: Implements the original deep hedging approach with pre-generated training data and shared neural network weights across all time steps.
-- **`deep_hedging_step_specific.py`**: Implements the modified approach where stock price paths are generated dynamically at each training iteration using the Heston model, and separate neural networks with independent weights are used for each trading step, as described in the paper.
-
-### `deep_hedging_experiment.ipynb`
-A Jupyter notebook serving as a sandbox environment to:
-- Generate figures and performance metrics comparing the two strategies
-- Test and compare the two class implementations side by side
-- Visualise results including CVaR, entropic risk, and P&L distributions
-
----
-
-## References
-
-- Buehler, H., Gonon, L., Teichmann, J., & Wood, B. (2018). [Deep Hedging](https://arxiv.org/abs/1802.03042). *arXiv:1802.03042*
-- Heston, S. L. (1993). A closed-form solution for options with stochastic volatility. *The Review of Financial Studies*, 6(2), 327–343.
-- Rockafellar, R. T., & Uryasev, S. (2000). Optimization of conditional value-at-risk. *Journal of Risk*, 2(3), 21–41.
-- Andersen, L. (2008). Simple and efficient simulation of the Heston stochastic volatility model. *Journal of Computational Finance*, 11(3).
+- `scripts/general_nn.py`: simulation, neural networks, training, and evaluation.
+- `scripts/settings.py`: market, network, and experiment settings.
+- `scripts/plots.py`: learning curves, risk comparisons, and P&L plots.
