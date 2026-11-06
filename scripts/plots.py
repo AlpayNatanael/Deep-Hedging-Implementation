@@ -6,13 +6,14 @@ Use explain=True for a separate interpretation below the figure, and
 save_dir="figures" to export 300-dpi PNGs and vector SVGs.
 No data, scores, model weights, or training settings are changed.
 
-All eight public plotting functions are available:
-    plot_learning, plot_learning_simple, plot_losses, plot_pnl_histogram, plot_risk,
-    plot_loss_tails, plot_paths, and show_published_figure.
+All nine public plotting functions are available:
+    plot_learning, plot_learning_simple, plot_losses, plot_pnl_histogram,
+    plot_pnl_comparison, plot_risk, plot_loss_tails, plot_paths, and show_published_figure.
 
-The first six accept objective="CVaR" or objective="Entropic".
+The first seven accept objective="CVaR" or objective="Entropic".
 Omitting objective displays all common fitted objectives, except that
-plot_learning_simple defaults to a single CVaR run. Objective names are
+plot_learning_simple and plot_pnl_comparison default to CVaR.
+plot_pnl_comparison requires one common premium and shows full and central views. Objective names are
 case-insensitive. Market paths and published figures do not depend on an
 objective, so plot_paths and show_published_figure do not take that argument.
 
@@ -26,7 +27,7 @@ the file. Use print(plots.__file__) to check which file the notebook imports.
 """
 
 # Functions beginning with an underscore are helpers used by the plotting functions.
-# The eight functions near the end are the ones you normally call in a notebook.
+# The nine functions near the end are the ones you normally call in a notebook.
 # An experiment supplies stored data and training records; this file draws them.
 import io
 import json
@@ -831,4 +832,59 @@ def show_published_figure(number, *, dpi=DEFAULT_DPI, figsize=(10, 6),
         show, explain, None,
     )
     return {"published": pair} if not show else None
+
+
+def plot_pnl_comparison(
+    experiments, *, premium, title="Terminal P&L", objective="CVaR",
+    replicate=0, bin_width=0.25, zoom=(-3, 3),
+):
+    """Plot stored policy P&Ls: full range on the left, central zoom on the right."""
+    models = _experiments(experiments)
+    if objective is None:
+        raise ValueError("Choose CVaR or Entropic.")
+    objective = _objectives(models, objective)[0]
+    premium, bin_width = float(premium), float(bin_width)
+    if not np.isfinite(premium) or not np.isfinite(bin_width) or bin_width <= 0:
+        raise ValueError("Use a finite premium and a positive, finite bin width.")
+    if len(zoom) != 2 or not np.isfinite(zoom).all() or zoom[0] >= zoom[1]:
+        raise ValueError("zoom must contain two increasing, finite limits.")
+
+    # Read the selected policies' existing test losses.
+    profits = [
+        premium - _array(m.losses(objective, replicate=replicate))
+        for m in models
+    ]
+    if len({len(values) for values in profits}) != 1:
+        raise ValueError("Compare equal numbers of test scenarios.")
+
+    # Zero-aligned bins keep the same intervals across separate calls.
+    all_values = np.concatenate(profits)
+    low = np.floor(all_values.min() / bin_width)
+    high = max(low + 1, np.ceil(all_values.max() / bin_width))
+    bins = bin_width * np.arange(low, high + 1)
+
+    labels = [
+        m.name + "\n" + ("fresh batches" if m.dynamic_data else "fixed pool")
+        for m in models
+    ]
+    figure, axes = plt.subplots(1, 2, figsize=(12, 5), sharey=True, dpi=200)
+
+    for axis in axes:
+        axis.hist(profits, bins=bins, label=labels, alpha=0.6, rwidth=0.9)
+        axis.axvline(0, color="black", linewidth=0.8)
+        axis.set_xlabel("Final P&L (premium - loss)")
+        axis.grid(axis="y", alpha=0.2)
+
+    axes[0].set_title("Full observed range")
+    axes[0].set_ylabel("Number of scenarios")
+    axes[1].set_xlim(*zoom)
+    axes[1].set_title(f"Central view only: [{zoom[0]:g}, {zoom[1]:g}]")
+    figure.suptitle(title + ": " + _criterion(objective, models[0].settings))
+
+    handles, _ = axes[0].get_legend_handles_labels()
+    figure.legend(handles, labels, loc="lower center", ncol=2, fontsize=9)
+    figure.tight_layout(rect=(0, 0.15, 1, 0.90))
+    plt.show()
+    plt.close(figure)
+    return figure, axes
 
