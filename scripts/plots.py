@@ -394,3 +394,51 @@ def plot_loss_tails(experiments, threshold=5.0):
         )
         subtitle = f"Historical evaluation; configured replicate {_replicate(reference)}; {sample_size:,} episodes."
     _finish(figure, axes, "Why can a few bad hedges matter so much?", paragraph, subtitle)
+
+    
+    
+    
+def plot_learning_simple(experiment, objective="CVaR", replicate=0, dpi=200):
+    """Plot one training run's recorded validation scores."""
+    import matplotlib.pyplot as plt
+
+    run = experiment.get_run(objective, replicate)
+    history = sorted(run["history"], key=lambda row: row["update"])
+
+    if not history:
+        raise ValueError("This run has no recorded validation history.")
+
+    updates = [row["update"] for row in history]
+    risks = [row["risk"] for row in history]
+
+    fig, ax = plt.subplots(figsize=(8, 5), dpi=dpi)
+
+    ax.plot(
+        updates,
+        risks,
+        marker="o",
+        linewidth=2,
+        markersize=5,
+    )
+
+    if objective == "CVaR":
+        criterion = f"CVaR: worst {100 * (1 - experiment.settings.alpha):g}%"
+    else:
+        criterion = f"Entropic risk: lambda = {experiment.settings.risk_aversion:g}"
+
+    ax.set_title(f"{experiment.name} | {criterion}", fontsize=14)
+    ax.set_xlabel("Updates after warm-up", fontsize=13)
+    ax.set_ylabel("Validation risk", fontsize=13)
+
+    ax.tick_params(labelsize=11)
+    ax.ticklabel_format(axis="y", style="plain", useOffset=False)
+    ax.grid(alpha=0.2)
+
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+
+    fig.tight_layout()
+    plt.show()
+    plt.close(fig)
+
+    return fig, ax

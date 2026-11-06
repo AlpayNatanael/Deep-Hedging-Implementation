@@ -139,8 +139,7 @@ class _TradingPolicy(nn.Module): #main thing to read to understand what the NN s
 
         # Choose Tanh or ReLU as the activation function for the hidden layers.
         activation = nn.Tanh if settings.network.activation == "tanh" else nn.ReLU
-        
-        
+            
         for day in range(settings.number_of_days):
             layers = []
             previous_size = settings.input_size
@@ -378,14 +377,17 @@ class generalNN:
 
     @property
     def parameter_count(self):
+        """See title"""
         return sum(parameter.numel() for parameter in self.network.parameters())
 
     def _make_network(self, replicate=0):
+        """"This function creates a new, untrained trading policy with reproducible initial weights"""
         with torch.random.fork_rng(devices=[]):
             torch.manual_seed(self.settings.initialization_seed + replicate)
             return _TradingPolicy(self.settings, self.method)
 
     def _check_data(self, data):
+        """"Checks that the data in the right format, with the right number of days, stocks, and instruments for this experiment."""
         if isinstance(data, dict):
             data = DataSet(**data)
         if not isinstance(data, DataSet):
@@ -402,6 +404,7 @@ class generalNN:
         return data
 
     def _check_separation(self, data, split):
+        """"Checks that a new dataset is separate from training, validation, test, or historical data already in the experiment. It rejects reused seeds, identical simulated scenarios, or overlapping date ranges. """
         known_seeds = {self.settings.training_seed + 100 * replicate + stage
                        for replicate in range(self.settings.number_of_replicates) for stage in (0, 1)}
         if split in {"test", "historical"}:
@@ -438,6 +441,7 @@ class generalNN:
         return self
 
     def _generate(self, size, generator, seed, role):
+        """This function is responsible for creating a 'DataSet' of market paths. """"
         if self.data_generator is None and self.metadata.get("custom_generator_requires_reconnection"):
             raise ValueError("Reconnect the saved experiment's custom data_generator before generating more data.")
         if self.data_generator is not None:
@@ -467,6 +471,7 @@ class generalNN:
                        metadata={"kind": "synthetic", "stocks_independent": True})
 
     def prepare_data(self, include_test=True):
+        """"Create the validation data, optionally create the test data, and create a fixed training dataset only when you are using static training. """
         torch.set_num_threads(self.settings.torch_threads)
         splits = [("validation", self.settings.validation_size, self.settings.validation_seed)]
         if not self.dynamic_data:
@@ -481,6 +486,7 @@ class generalNN:
         return self
 
     def _batch(self, size, generator, seed, role):
+        """Generates a batch. """
 
         if self.dynamic_data:
             # Generate a fresh batch of complete market paths.
