@@ -1,0 +1,5 @@
+,CVaR,Entropic
+Benefit of variance trading: paper,0.3287128071357541,35.265470396212464
+Benefit of variance trading: ours,0.4457323422038586,1.8711960676350525
+Our advantage: stock only,0.23970254692326698,38.653377184848935
+Our advantage: stock + variance,0.35672208199137145,5.259102856271522
