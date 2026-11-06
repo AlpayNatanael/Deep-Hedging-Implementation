@@ -1,8 +1,16 @@
-"""Teaching figures for one HedgingExperiment or a matched list of experiments."""
+"""Readable, high-resolution plots for generalNN experiments.
 
+Existing calls still work. Each risk objective gets its own full-size figure.
+Use objective="CVaR" or objective="Entropic" to display just one objective.
+Use explain=True for a separate interpretation below the figure, and
+save_dir="figures" to export 300-dpi PNGs and vector SVGs.
+No data, scores, model weights, or training settings are changed.
+"""
+
+import io
 import json
+import re
 from pathlib import Path
-import textwrap
 
 import matplotlib.pyplot as plt
 from matplotlib.ticker import LogLocator, NullFormatter, ScalarFormatter
@@ -11,434 +19,524 @@ import numpy as np
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 OBJECTIVES = ("CVaR", "Entropic")
-COLORS = {"paper_full": "#286DA8", "paper_stock": "#C76B2C", "ours": "#29846B"}
 MATCHED_SETTINGS = (
     "initial_price", "strike", "initial_variance", "long_run_variance",
     "mean_reversion", "vol_of_vol", "correlation", "number_of_days",
     "time_step", "simulation_substeps", "cost_rate", "variance_notional",
     "alpha", "risk_aversion",
 )
+DEFAULT_SIZE = (9, 6)
+DEFAULT_DPI = 200
 
 
-def _experiments(value):
+def _experiments(value, match_test=True):
     experiments = list(value) if isinstance(value, (list, tuple)) else [value]
     if not experiments:
         raise ValueError("Pass an experiment or a nonempty list of experiments.")
-    if len(experiments) > 1:
-        reference = experiments[0]
+    if len(experiments) == 1:
+        return experiments
+
+    reference = experiments[0]
+    for experiment in experiments[1:]:
+        differences = [
+            key for key in MATCHED_SETTINGS
+            if getattr(experiment.settings, key) != getattr(reference.settings, key)
+        ]
+        if differences:
+            raise ValueError("Different comparison settings: " + ", ".join(differences))
+        if not match_test:
+            continue
         identity = reference.metadata.get("test_data_id")
-        if identity is None:
-            raise ValueError("Matched comparisons need evaluated experiments with a test_data_id.")
-        for experiment in experiments[1:]:
-            if experiment.metadata.get("test_data_id") != identity:
-                raise ValueError("These experiments use different test paths; compare them on common test data first.")
-            differences = [
-                key for key in MATCHED_SETTINGS
-                if getattr(experiment.settings, key) != getattr(reference.settings, key)
-            ]
-            if differences:
-                raise ValueError(f"Matched comparisons need the same market, costs, and risk settings: {differences}")
-            first_quotes = reference.metadata.get("instrument_data_ids", {})
-            next_quotes = experiment.metadata.get("instrument_data_ids", {})
-            for name in first_quotes.keys() & next_quotes.keys():
-                if first_quotes[name] != next_quotes[name]:
-                    raise ValueError(f"The common instrument {name} has different observations.")
-            first_units = {item.name: (item.multiplier, item.cost_rate) for item in reference.settings.instruments}
-            next_units = {item.name: (item.multiplier, item.cost_rate) for item in experiment.settings.instruments}
-            if any(first_units[name] != next_units[name] for name in first_units.keys() & next_units.keys()):
-                raise ValueError("Common instruments must have matching units and trading costs.")
+        if identity is None or experiment.metadata.get("test_data_id") != identity:
+            raise ValueError("Evaluate the experiments on common test paths first.")
+        first_quotes = reference.metadata.get("instrument_data_ids", {})
+        next_quotes = experiment.metadata.get("instrument_data_ids", {})
+        for name in first_quotes.keys() & next_quotes.keys():
+            if first_quotes[name] != next_quotes[name]:
+                raise ValueError("Different observed quotes for " + name)
+        first_units = {
+            item.name: (item.multiplier, item.cost_rate)
+            for item in reference.settings.instruments
+        }
+        next_units = {
+            item.name: (item.multiplier, item.cost_rate)
+            for item in experiment.settings.instruments
+        }
+        for name in first_units.keys() & next_units.keys():
+            if first_units[name] != next_units[name]:
+                raise ValueError("Different units or trading costs for " + name)
     return experiments
 
 
+def _objectives(experiments, objective):
+    common = [
+        name for name in OBJECTIVES
+        if all(any(run["objective"] == name for run in item.runs) for item in experiments)
+    ]
+    if objective is not None:
+        names = {name.lower(): name for name in OBJECTIVES}
+        selected = names.get(str(objective).lower())
+        if selected not in common:
+            raise ValueError("Choose an available objective: " + ", ".join(common))
+        return [selected]
+    if not common:
+        raise ValueError("No common fitted objective is available.")
+    return common
+
+
 def _runs(experiment, objective):
-    runs = [run for run in experiment.runs if run["objective"].lower() == objective.lower()]
-    if not runs:
-        raise ValueError(f"No {objective} runs are available. Load saved results or fit the experiment first.")
+    runs = [run for run in experiment.runs if run["objective"] == objective]
     return sorted(runs, key=lambda run: run["replicate_id"])
 
 
-def _replicate(experiment):
-    return int(experiment.settings.display_replicate)
-
-
-def _color(experiment, experiments):
-    if sum(item.family == experiment.family for item in experiments) > 1:
-        return plt.get_cmap("tab10")(experiments.index(experiment) % 10)
-    return COLORS[experiment.family]
+def _replicate(experiment, replicate):
+    return int(experiment.settings.display_replicate if replicate is None else replicate)
 
 
 def _label(experiment, experiments):
     label = experiment.name
-    same_name = [item for item in experiments if item.name == label]
-    if len(same_name) > 1:
+    matches = [item for item in experiments if item.name == label]
+    if len(matches) > 1:
         mode = "fresh batches" if experiment.dynamic_data else "fixed pool"
-        label += f" ({mode})"
-        if sum(item.dynamic_data == experiment.dynamic_data for item in same_name) > 1:
-            label += f" #{experiments.index(experiment) + 1}"
+        label += " (" + mode + ")"
+        if sum(item.dynamic_data == experiment.dynamic_data for item in matches) > 1:
+            label += " #" + str(experiments.index(experiment) + 1)
     return label
 
 
-def _panels(experiments, height):
-    objectives = [
-        objective for objective in OBJECTIVES
-        if all(any(run["objective"] == objective for run in experiment.runs)
-               for experiment in experiments)
-    ]
-    if not objectives:
-        raise ValueError("The experiments need at least one common fitted risk objective.")
-    figure, axes = plt.subplots(1, len(objectives), figsize=(11.5, height), squeeze=False)
-    return figure, axes.ravel(), objectives
-
-
-def _objective_title(objective, settings):
+def _criterion(objective, settings):
     if objective == "CVaR":
-        return f"CVaR: worst {100 * (1-settings.alpha):g}% of losses"
-    return f"Entropic risk: $\\lambda={settings.risk_aversion:g}$"
+        return f"CVaR: worst {100 * (1 - settings.alpha):g}% of losses"
+    return rf"Entropic risk: $\lambda={settings.risk_aversion:g}$"
 
 
-def _finish(figure, axes, title, paragraph, subtitle=None, image=False):
-    if not image:
-        for axis in np.asarray(axes, dtype=object).reshape(-1):
-            axis.grid(alpha=0.17)
-            axis.set_axisbelow(True)
-            axis.spines["top"].set_visible(False)
-            axis.spines["right"].set_visible(False)
-            axis.tick_params(labelsize=9)
+def _array(values):
+    if hasattr(values, "detach"):
+        values = values.detach().cpu().numpy()
+    values = np.asarray(values, dtype=float)
+    if values.ndim != 1 or len(values) == 0 or not np.isfinite(values).all():
+        raise ValueError("Expected a nonempty, finite, one-dimensional loss array.")
+    return values
 
-    caption = textwrap.fill(
-        paragraph, width=140, break_long_words=False, break_on_hyphens=False,
-    )
-    bottom = ((len(caption.splitlines()) * 13 + 18) / 72) / figure.get_figheight() + 0.025
-    top = 0.87 if subtitle else 0.91
-    figure.suptitle(title, fontsize=14, fontweight="semibold", y=0.98)
-    if subtitle:
-        figure.text(0.5, 0.925, subtitle, ha="center", va="center", fontsize=9.5)
-    figure.tight_layout(rect=(0.01, bottom, 0.99, top), w_pad=2.5)
-    figure.text(0.025, 0.025, caption, ha="left", va="bottom", fontsize=9.5, linespacing=1.35)
-    plt.show()
+
+def _figure(title, xlabel, ylabel, dpi, figsize):
+    figure = plt.figure(figsize=figsize, dpi=dpi)
+    axis = figure.add_subplot(111)
+    axis.set_title(title, fontsize=15, pad=18)
+    axis.set_xlabel(xlabel, fontsize=13, labelpad=9)
+    axis.set_ylabel(ylabel, fontsize=13, labelpad=9)
+    axis.tick_params(labelsize=11)
+    axis.grid(axis="y", alpha=0.18)
+    axis.set_axisbelow(True)
+    axis.spines["top"].set_visible(False)
+    axis.spines["right"].set_visible(False)
+    axis.ticklabel_format(axis="y", style="plain", useOffset=False)
+    return figure, axis
+
+
+def _legend(axis):
+    handles, labels = axis.get_legend_handles_labels()
+    if handles:
+        axis.legend(
+            handles, labels, loc="upper center", bbox_to_anchor=(0.5, -0.20),
+            ncol=2 if len(handles) > 1 else 1, frameon=False, fontsize=10.5,
+            handlelength=2.8, columnspacing=1.6,
+        )
+
+
+def _finish(figure, axis, filename, explanation, show, explain, save_dir):
+    """Use vector display in Jupyter; keep interpretation out of the image."""
+    _legend(axis)
+    figure.tight_layout(pad=1.3)
+    if save_dir is not None:
+        folder = Path(save_dir)
+        folder.mkdir(parents=True, exist_ok=True)
+        figure.savefig(folder / (filename + ".png"), dpi=300, bbox_inches="tight")
+        figure.savefig(folder / (filename + ".svg"), format="svg", bbox_inches="tight")
+    if show:
+        try:
+            from IPython import get_ipython
+            from IPython.display import Markdown, SVG, display
+            in_notebook = get_ipython() is not None and hasattr(get_ipython(), "kernel")
+        except ImportError:
+            in_notebook = False
+        if in_notebook:
+            buffer = io.StringIO()
+            figure.savefig(buffer, format="svg", bbox_inches="tight")
+            display(SVG(buffer.getvalue()))
+            if explain:
+                display(Markdown("**How to read this graph.** " + explanation))
+        else:
+            plt.show()
+            if explain:
+                print(explanation)
     plt.close(figure)
+    return figure, axis
 
 
-def show_published_figure(number):
-    """Display original author artwork, with its original setting identified."""
-    metadata = json.loads((PROJECT_ROOT / "assets" / "paper" / "metadata.json").read_text())
-    entry = metadata["figures"][str(number)]
-    artwork = plt.imread(PROJECT_ROOT / entry["image"])
-    figure, axis = plt.subplots(figsize=(10.5, 7.2))
-    axis.imshow(artwork)
-    axis.axis("off")
-    if int(number) == 2:
-        paragraph = (
-            "Blue is the authors' learned CVaR hedge; orange is their model hedge. The horizontal axis is profit and loss "
-            r"after receiving the common premium $q\approx1.69$; values left of zero mean losses. "
-            "Taller bars count more simulated outcomes. "
-            "The similar histograms show similar outcomes in this example. Both hedges trade stock and a variance claim, "
-            "with zero transaction costs. Our later graphs include costs and report loss before the premium, so their numerical levels have a different meaning."
+def _filename(kind, experiments, objective=""):
+    families = "_".join(str(item.family) for item in experiments)
+    return re.sub(r"[^a-z0-9_-]+", "_", f"{kind}_{families}_{objective}".lower()).strip("_")
+
+
+def plot_learning(experiments, objective=None, replicate=None, *, dpi=DEFAULT_DPI,
+                  figsize=DEFAULT_SIZE, show=True, explain=False, save_dir=None):
+    """Plot validation histories, one full-size figure per objective.
+
+    By default, show every run and its pointwise median. Set replicate=0
+    to display only run zero. The recorded checkpoints are not smoothed.
+    With show=False, return a dictionary of (figure, axis) pairs.
+    """
+    experiments = _experiments(experiments, match_test=False)
+    output = {}
+    for name in _objectives(experiments, objective):
+        figure, axis = _figure(
+            "How does the network learn?\n" + _criterion(name, experiments[0].settings),
+            "Updates after warm-up", "Validation risk (lower is better)", dpi, figsize,
         )
-    elif int(number) == 11:
-        paragraph = (
-            "Red points show the authors' price premiums at five trading-cost levels; the blue line fits their relationship. "
-            "Both axes are logarithmic. Higher trading costs require a larger price premium. The displayed slope 0.71 describes "
-            "how the premium scales with costs, rather than how quickly a network learns. "
-            r"The printed $p_0$ uses $q$ as the numerical reference. Our fixed-cost comparison does not estimate this slope."
-        )
-    else:
-        paragraph = entry["interpretation_markdown"]
-    _finish(
-        figure, axis, entry["title"], paragraph,
-        subtitle="Original artwork from Buehler et al., Deep Hedging (2018)", image=True,
-    )
-
-
-def plot_paths(experiments):
-    """Explain the common stock scenarios and the call payment at maturity."""
-    experiments = _experiments(experiments)
-    experiment = experiments[0]
-    settings = experiment.settings
-    if experiment.metadata.get("evaluation_kind") == "historical" or not experiment.metadata.get("default_call_payoff", True):
-        _plot_supplied_payments(experiment)
-        return
-    prices = np.asarray(experiment.arrays["example_prices"], dtype=float)
-    stock = prices[:, :, 0] if prices.ndim == 3 else prices
-    stock = stock[:6]
-    days = np.arange(stock.shape[1])
-    colors = plt.cm.viridis(np.linspace(0.1, 0.85, len(stock)))
-    figure, axes = plt.subplots(1, 2, figsize=(11.5, 4.8))
-    for path, color in zip(stock, colors):
-        axes[0].plot(days, path, color=color, linewidth=1.6)
-    axes[0].axhline(settings.strike, color="#68727D", linestyle="--", linewidth=1, label="Strike")
-    axes[0].set(xlabel="Trading date", ylabel="Stock price", title="Six possible stock paths")
-    axes[0].legend(fontsize=9)
-
-    terminal = stock[:, -1]
-    lower = min(float(stock.min()), settings.strike * 0.95)
-    upper = max(float(stock.max()), settings.strike * 1.05)
-    price_grid = np.linspace(lower, upper, 200)
-    axes[1].plot(price_grid, np.maximum(price_grid-settings.strike, 0), color="#42515E", linewidth=1.7)
-    axes[1].scatter(terminal, np.maximum(terminal-settings.strike, 0), c=colors, s=35, zorder=3)
-    axes[1].set(xlabel="Stock price at maturity", ylabel="Option payment", title=r"The bill we must pay: $(S_T-K)^+$")
-    paragraph = (
-        "Each line is a possible future for the stock, not a forecast. Matching colored dots show the payment owed at the end "
-        f"of those paths: zero below the strike $K={settings.strike:g}$, and the amount above the strike otherwise. "
-        "A hedge buys and sells assets before these future prices are known, so its trading gains can help pay this bill. "
-        "The comparison uses common market paths for all methods."
-    )
-    _finish(figure, axes, "What are we trying to hedge?", paragraph)
-
-
-def _plot_supplied_payments(experiment):
-    historical = experiment.metadata.get("evaluation_kind") == "historical"
-    prices = np.asarray(experiment.arrays["example_prices"])
-    payments = np.asarray(experiment.arrays["example_payoffs"])
-    colors = plt.cm.viridis(np.linspace(0.1, 0.85, len(prices)))
-    figure, axes = plt.subplots(1, 2, figsize=(11.5, 4.8))
-    for index, color in enumerate(colors):
-        axes[0].plot(np.arange(prices.shape[1]), prices[index, :, 0], color=color)
-    axes[0].set(xlabel="Trading step within each episode", ylabel="First stock price",
-                title="Observed historical episodes" if historical else "Example stock paths")
-    axes[1].bar(np.arange(1, len(payments) + 1), payments, color=colors)
-    axes[1].set(xlabel="Episode", ylabel="Terminal liability payment", title="Supplied payments for these episodes")
-    paragraph = (
-        "Colors match each first-stock path to that episode's supplied liability payment. "
-        "The right panel uses the payments in the dataset; it does not reconstruct a call from the last stock price. "
-        "A portfolio payment can depend on more than the first stock shown here. "
-        + ("These are observed historical windows, evaluated with the already-fitted policy."
-           if historical else "The same episode payments enter the loss calculation.")
-    )
-    _finish(figure, axes, "The market observations and the liability", paragraph)
-
-
-def plot_learning(experiments):
-    """Show continuation validation histories for one method or a matched list."""
-    experiments = _experiments(experiments)
-    settings = experiments[0].settings
-    figure, axes, objectives = _panels(experiments, 4.9)
-    logarithmic = []
-    for axis, objective in zip(axes, objectives):
         values = []
         for experiment in experiments:
-            histories = []
-            for run in _runs(experiment, objective):
-                history = {int(row["update"]): float(row["risk"]) for row in run["history"]}
-                histories.append(history)
-                updates = np.asarray(sorted(history))
-                risks = np.asarray([history[update] for update in updates])
-                values.extend(risks.tolist())
-                axis.plot(updates, risks, color=_color(experiment, experiments), alpha=0.3, linewidth=0.8)
+            runs = _runs(experiment, name)
+            if replicate is not None:
+                runs = [experiment.get_run(name, int(replicate))]
+            histories = [
+                {int(row["update"]): float(row["risk"]) for row in run["history"]}
+                for run in runs
+            ]
+            if any(not history for history in histories):
+                raise ValueError("A run has an empty validation history.")
+            common = sorted(set.intersection(*(set(history) for history in histories)))
+            if not common:
+                raise ValueError("The runs have no common recorded update.")
+            matrix = np.array([[history[step] for step in common] for history in histories])
+            median, = axis.plot(
+                common, np.median(matrix, axis=0), linewidth=2.4,
+                marker="o" if len(common) <= 15 else None, markersize=4,
+                label=_label(experiment, experiments),
+            )
+            for run, history in zip(runs, histories):
+                updates = sorted(history)
+                risks = [history[step] for step in updates]
+                values.extend(risks)
+                if len(runs) > 1:
+                    axis.plot(updates, risks, color=median.get_color(), alpha=0.28, linewidth=1)
                 chosen = int(run["best_update"])
-                axis.scatter(chosen, history[chosen], s=28, facecolor="white", edgecolor=_color(experiment, experiments), zorder=4)
-            common = np.asarray(sorted(set.intersection(*(set(history) for history in histories))))
-            risks = np.asarray([[history[update] for update in common] for history in histories])
-            axis.plot(common, np.median(risks, axis=0), color=_color(experiment, experiments), linewidth=2, label=_label(experiment, experiments))
-        axis.set(xlabel="Updates after warm-up", ylabel="Validation risk", title=_objective_title(objective, settings))
+                axis.scatter(
+                    chosen, history[chosen], s=80, facecolors="none",
+                    edgecolors=median.get_color(), linewidths=1.7, zorder=5,
+                )
         if min(values) > 0 and max(values) / min(values) > 6:
             axis.set_yscale("log")
             axis.yaxis.set_major_locator(LogLocator(subs=(1, 2, 5)))
             axis.yaxis.set_major_formatter(ScalarFormatter())
             axis.yaxis.set_minor_formatter(NullFormatter())
-            axis.set_ylabel("Validation risk (logarithmic scale)")
-            logarithmic.append(objective.lower())
-        axis.legend(fontsize=8.5)
-
-    paragraph = (
-        "Lower values mean less risk on the validation paths. Thin curves are separate training runs; the thick curve is their median. "
-        "Circles mark the checkpoints chosen for testing. The horizontal axis starts after the common CVaR warm-up, so it does not show learning "
-        "from a random starting network. A flat curve means little further improvement here; test results must still check performance on new paths."
-    )
-    if logarithmic:
-        paragraph += " The " + " and ".join(logarithmic) + " panel uses a logarithmic vertical scale to include large spikes."
-    modes = {experiment.dynamic_data for experiment in experiments}
-    data_note = "fresh paths per update" if modes == {True} else "resampling a fixed training pool" if modes == {False} else "different training-data modes"
-    subtitle = f"{settings.warmup_updates:,} warm-up updates precede this plot; training data: {data_note}."
-    _finish(figure, axes, "How does the network learn?", paragraph, subtitle)
-
-
-def plot_losses(experiments):
-    """Compare full-sample loss histograms with saved no-hedge and stock-delta baselines."""
-    experiments = _experiments(experiments)
-    reference = experiments[0]
-    figure, axes, objectives = _panels(experiments, 4.9)
-    no_hedge = np.asarray(reference.arrays["benchmark_loss_no_hedge"], dtype=float)
-    delta = reference.arrays.get("benchmark_loss_stock_delta")
-    if delta is not None:
-        delta = np.asarray(delta, dtype=float)
-    for axis, objective in zip(axes, objectives):
-        losses = [np.asarray(experiment.losses(objective, _replicate(experiment)), dtype=float) for experiment in experiments]
-        benchmarks = [no_hedge] if delta is None else [no_hedge, delta]
-        all_values = np.concatenate(benchmarks + losses)
-        bins = np.linspace(float(all_values.min()), float(all_values.max()), 81)
-        axis.hist(no_hedge, bins=bins, weights=np.full(len(no_hedge), 100/len(no_hedge)), color="#D4D9DE", label="No hedge")
-        if delta is not None:
-            axis.hist(delta, bins=bins, weights=np.full(len(delta), 100/len(delta)), histtype="step", color="#626A73", linestyle="--", linewidth=1.4, label="Stock delta")
-        for experiment, values in zip(experiments, losses):
-            axis.hist(values, bins=bins, weights=np.full(len(values), 100/len(values)), histtype="step", color=_color(experiment, experiments), linewidth=1.8, label=_label(experiment, experiments))
-        axis.set(xlabel="Loss before premium", ylabel="Test paths in each bin (%)", title=_objective_title(objective, reference.settings))
-        axis.legend(fontsize=8.2)
-    delta_note = "The dashed line is a stock-only delta hedge. " if delta is not None else ""
-    paragraph = (
-        "A taller bin means more paths have losses in that range. The gray no-hedge distribution is the option bill with no trading; "
-        "its mass at zero comes from options expiring without a payment. "
-        f"{delta_note}"
-        "The learned policies try to reduce large losses, while paying trading costs. A narrow main distribution can still hide rare large losses; "
-        "the later tail graph examines them directly. All losses here are measured before receiving the option premium."
-    )
-    if reference.metadata.get("evaluation_kind") == "historical" or not reference.metadata.get("default_call_payoff", True):
-        paragraph = (
-            "Each bin shows the percentage of episodes with losses in that range. The gray reference uses the supplied "
-            "liability payments with no hedge. Learned-policy losses include trading gains, supplied asset cashflows, "
-            "and the configured transaction costs, before any premium. Rare large losses may be hard to see in a histogram."
+            axis.set_ylabel("Validation risk (log scale; lower is better)", fontsize=13)
+        explanation = (
+            "The horizontal axis counts optimizer updates after the CVaR warm-up, not market days. "
+            "Lower validation risk is better. With multiple runs, faint lines show individual runs "
+            "and the bold line is their median at common recorded checkpoints. With one run, "
+            "the bold line is that run. Open circles mark validation-selected checkpoints. "
+            "Straight segments join recorded observations; there is no smoothing. "
+            "Warm-up updates are not displayed. CVaR and entropic risk use different criteria."
         )
-    _finish(figure, axes, "What changes when we hedge?", paragraph, f"Preselected training replicate {_replicate(reference)}; all observed losses are included.")
+        if axis.get_yscale() == "log":
+            explanation += " The vertical axis is logarithmic to retain large validation spikes."
+        output[name] = _finish(
+            figure, axis, _filename("learning", experiments, name),
+            explanation, show, explain, save_dir,
+        )
+    return output if not show else None
 
 
-def plot_risk(experiments):
-    """Compare objective-specific test risks, including the common no-hedge baseline."""
+def plot_learning_simple(experiment, objective="CVaR", replicate=0, dpi=DEFAULT_DPI):
+    """Backward-compatible single-run version of the earlier helper."""
+    result = plot_learning(
+        experiment, objective=objective, replicate=replicate, dpi=dpi, show=False,
+    )
+    figure, axis = next(iter(result.values()))
+    _finish(figure, axis, "learning_simple", "", True, False, None)
+    return figure, axis
+
+
+def plot_losses(experiments, objective=None, replicate=None, *, bins=80,
+                dpi=DEFAULT_DPI, figsize=DEFAULT_SIZE, show=True, explain=False, save_dir=None):
+    """Plot full-range loss histograms; no tail observations are removed."""
     experiments = _experiments(experiments)
     reference = experiments[0]
-    figure, axes, objectives = _panels(experiments, 5.2)
-    for axis, objective in zip(axes, objectives):
-        metric = objective.lower()
-        baseline = float(reference.benchmarks["no_hedge"][metric])
-        axis.scatter(0, baseline, marker="s", s=60, color="#87929D", zorder=3)
-        axis.text(0, 0.97, f"{baseline:.3f}", transform=axis.get_xaxis_transform(), ha="center", va="top", fontsize=9, color="#626A73")
-        all_values = [baseline]
-        for index, experiment in enumerate(experiments, start=1):
-            scores = np.asarray([run["metrics"][metric] for run in _runs(experiment, objective)], dtype=float)
-            offsets = np.linspace(-0.07, 0.07, len(scores)) if len(scores) > 1 else np.zeros(1)
-            axis.scatter(index+offsets, scores, s=27, color=_color(experiment, experiments), zorder=3)
-            axis.scatter(index, scores.mean(), marker="D", s=70, color=_color(experiment, experiments), edgecolor="white", zorder=4)
-            axis.text(index, 0.97, f"Mean: {scores.mean():.3f}", transform=axis.get_xaxis_transform(), ha="center", va="top", fontsize=8.5, color=_color(experiment, experiments))
+    no_hedge = _array(reference.arrays["benchmark_loss_no_hedge"])
+    output = {}
+    for name in _objectives(experiments, objective):
+        series = [
+            (_label(item, experiments), _array(item.losses(name, _replicate(item, replicate))))
+            for item in experiments
+        ]
+        series.append(("No hedge", no_hedge))
+        if "benchmark_loss_stock_delta" in reference.arrays:
+            series.append(("Stock delta", _array(reference.arrays["benchmark_loss_stock_delta"])))
+        edges = np.histogram_bin_edges(np.concatenate([v for _, v in series]), bins=bins)
+        figure, axis = _figure(
+            "What changes when we hedge?\n" + _criterion(name, reference.settings),
+            "Terminal loss before premium", "Scenarios in each bin (%)", dpi, figsize,
+        )
+        for index, (label, values) in enumerate(series):
+            axis.hist(
+                values, bins=edges, weights=np.full(len(values), 100 / len(values)),
+                histtype="step", linewidth=2.0,
+                linestyle="-" if index < len(experiments) else "--", label=label,
+            )
+        explanation = (
+            "The horizontal axis is the terminal loss before an option premium. "
+            "Each bin shows a percentage of scenarios, not a density. Curves share the same bins, "
+            "and all losses, including the extremes, are included. Dashed curves are benchmarks. "
+            "A narrow central distribution can still have rare large losses; use plot_loss_tails "
+            "to see their frequencies. This shows the configured display run (or the requested "
+            "replicate), not an average of separately trained policies."
+        )
+        output[name] = _finish(
+            figure, axis, _filename("losses", experiments, name), explanation, show, explain, save_dir,
+        )
+    return output if not show else None
+
+
+def plot_risk(experiments, objective=None, *, dpi=DEFAULT_DPI, figsize=DEFAULT_SIZE,
+              show=True, explain=False, save_dir=None):
+    """Compare objective-specific test risks and variation across training runs."""
+    experiments = _experiments(experiments)
+    reference = experiments[0]
+    output = {}
+    for name in _objectives(experiments, objective):
+        figure, axis = _figure(
+            "Which hedge has less risk?\n" + _criterion(name, reference.settings),
+            "", "Measured risk before premium (lower is better)", dpi, figsize,
+        )
+        metric = name.lower()
+        all_values = []
+        for index, experiment in enumerate(experiments):
+            scores = np.array([run["metrics"][metric] for run in _runs(experiment, name)])
+            offsets = np.linspace(-0.08, 0.08, len(scores)) if len(scores) > 1 else [0]
+            points = axis.scatter(
+                index + np.asarray(offsets), scores, s=45, zorder=4,
+                label="Individual training run" if index == 0 else None,
+            )
+            axis.scatter(
+                index, scores.mean(), s=115, marker="D", facecolors="none",
+                edgecolors=points.get_facecolor(), linewidths=2, zorder=5,
+                label="Mean across runs" if index == 0 else None,
+            )
+            axis.annotate(
+                f"Mean {scores.mean():.3f}", (index, scores.mean()),
+                xytext=(0, 13), textcoords="offset points", ha="center", fontsize=11,
+            )
             all_values.extend(scores.tolist())
+        baseline = float(reference.benchmarks["no_hedge"][metric])
+        position = len(experiments)
+        axis.scatter(position, baseline, s=65, marker="s", zorder=4)
+        axis.annotate(
+            f"{baseline:.3f}", (position, baseline), xytext=(0, 13),
+            textcoords="offset points", ha="center", fontsize=11,
+        )
+        all_values.append(baseline)
         span = max(float(np.ptp(all_values)), 0.2)
-        axis.set_ylim(min(all_values)-0.10*span, max(all_values)+0.23*span)
-        axis.set_xlim(-0.4, len(experiments)+0.4)
-        labels = [textwrap.fill(_label(experiment, experiments), width=19) for experiment in experiments]
-        axis.set_xticks(np.arange(len(experiments)+1), labels=["No hedge"] + labels)
-        axis.set(ylabel="Test risk before premium", title=_objective_title(objective, reference.settings))
-
-    paragraph = (
-        "Lower is better within each panel. The gray square is no hedging. Small colored dots are separate training runs; diamonds and labels show means. "
-        "Each column uses policies trained for that panel's risk objective. We evaluate them on the same untouched test paths. "
-    )
-    by_family = {experiment.family: experiment for experiment in experiments}
-    if {"paper_full", "paper_stock", "ours"} <= set(by_family) and len(objectives) == 2:
-        full = by_family["paper_full"]
-        ours = by_family["ours"]
-        full_mean = np.mean([run["metrics"]["cvar"] for run in _runs(full, "CVaR")])
-        ours_mean = np.mean([run["metrics"]["cvar"] for run in _runs(ours, "CVaR")])
-        er = [run["metrics"]["entropic"] for run in _runs(full, "Entropic")]
-        paragraph += (
-            f"Here the two-asset method has mean CVaR {full_mean:.3f}, versus {ours_mean:.3f} for ours, but its entropic scores range "
-            f"from {min(er):.3f} to {max(er):.3f}. The variance-trading control and the stock-only implementation comparison answer different questions."
+        axis.set_ylim(min(all_values) - 0.13 * span, max(all_values) + 0.25 * span)
+        axis.set_xlim(-0.5, position + 0.5)
+        labels = [_label(item, experiments).replace(": ", ":\n") for item in experiments]
+        axis.set_xticks(range(position + 1))
+        axis.set_xticklabels(labels + ["No hedge"], fontsize=10.5)
+        explanation = (
+            "Lower is better. Small dots are individual training runs, open diamonds are their "
+            "arithmetic mean, and the square is no hedging. All policies shown here were trained "
+            "for the named objective and evaluated on common scenarios. Variation across training "
+            "runs is not a confidence interval. The mean of their risk scores is not the risk of "
+            "an averaged or ensemble trading policy. Different risk objectives have separate plots."
         )
-    else:
-        paragraph += "This measures the performance of these fitted policies; a small average does not establish reliable control of every rare loss."
-    subtitle = "Matched market, costs, risk definitions, and test scenarios."
-    if reference.metadata.get("evaluation_kind") == "historical":
-        paragraph = (
-            "Lower is better within each risk panel. Dots are the previously trained policies and diamonds are their mean scores. "
-            "All are evaluated on the same supplied historical episodes, using their recorded liability payments. "
-            "Weights and normalization remain frozen. These finite-sample scores depend on the selected historical windows and accounting assumptions."
+        output[name] = _finish(
+            figure, axis, _filename("risk", experiments, name), explanation, show, explain, save_dir,
         )
-        subtitle = "Historical scenario evaluation; supplied observations and configured trading costs."
-        for axis in axes:
-            axis.set_ylabel("Historical risk before premium")
-    _finish(figure, axes, "Which saved hedge has less risk?", paragraph, subtitle)
+    return output if not show else None
 
 
-def plot_loss_tails(experiments, threshold=5.0):
-    """Show the probability of exceeding a loss, with no-hedge reference curves."""
+def plot_loss_tails(experiments, threshold=5.0, *, objective=None, replicate=None,
+                    dpi=DEFAULT_DPI, figsize=DEFAULT_SIZE, show=True, explain=False, save_dir=None):
+    """Plot empirical P(loss >= threshold) on a logarithmic percentage axis.
+
+    Each objective has a separate full-size figure. All sample extremes are
+    retained. Open endpoint circles mark the observed maxima; no smoothing,
+    binning, truncation, or extrapolation is used.
+    """
     experiments = _experiments(experiments)
     reference = experiments[0]
-    figure, axes, objectives = _panels(experiments, 5.0)
-    sample_size = len(np.asarray(reference.arrays["benchmark_loss_no_hedge"]))
-    no_hedge = np.asarray(reference.arrays["benchmark_loss_no_hedge"], dtype=float)
-    for axis, objective in zip(axes, objectives):
-        values, indices = np.unique(np.sort(no_hedge), return_index=True)
-        axis.step(values, 100*(sample_size-indices)/sample_size, where="pre", color="#9CA5AE", linewidth=1.2, linestyle="--", label="No hedge")
-        for experiment in experiments:
-            losses = np.asarray(experiment.losses(objective, _replicate(experiment)), dtype=float)
-            values, indices = np.unique(np.sort(losses), return_index=True)
-            axis.step(values, 100*(len(losses)-indices)/len(losses), where="pre", color=_color(experiment, experiments), linewidth=1.7, label=_label(experiment, experiments))
-        axis.axvline(threshold, color="#8E98A2", linestyle=":", linewidth=1)
+    no_hedge = _array(reference.arrays["benchmark_loss_no_hedge"])
+    output = {}
+    for name in _objectives(experiments, objective):
+        series = [
+            (_label(item, experiments), _array(item.losses(name, _replicate(item, replicate))))
+            for item in experiments
+        ]
+        series.append(("No hedge", no_hedge))
+        if any(len(values) != len(no_hedge) for _, values in series):
+            raise ValueError("Tail comparisons require the same number of evaluation scenarios.")
+        figure, axis = _figure(
+            "Why can a few bad hedges matter so much?\n" + _criterion(name, reference.settings),
+            "Loss threshold before premium", "Scenarios with at least this loss (%)", dpi, figsize,
+        )
+        for index, (label, losses) in enumerate(series):
+            values, first_indices = np.unique(np.sort(losses), return_index=True)
+            percentages = 100 * (len(losses) - first_indices) / len(losses)
+            line, = axis.step(
+                values, percentages, where="pre", linewidth=2.2,
+                linestyle="--" if index == len(experiments) else "-", label=label,
+            )
+            axis.scatter(
+                values[-1], percentages[-1], s=50, facecolors="none",
+                edgecolors=line.get_color(), linewidths=1.5, zorder=4,
+            )
+        one_path = 100 / len(no_hedge)
         axis.set_yscale("log")
-        ticks = [value for value in [0.001, 0.01, 0.1, 1, 10, 100] if value >= 100/sample_size]
-        axis.set_yticks(ticks, labels=[f"{value:g}" for value in ticks])
-        axis.set_ylim(100/(1.3*sample_size), 125)
-        axis.set(xlabel="Loss threshold before premium", ylabel="Paths with at least this loss (%)", title=_objective_title(objective, reference.settings))
-        axis.legend(fontsize=8.2)
-
-    paragraph = (
-        "Choose a loss on the horizontal axis, then read the percentage of paths that lose at least that much. "
-        "The vertical scale is logarithmic, so very rare outcomes stay visible. A lower curve at one threshold need not mean lower risk at every threshold. "
-    )
-    full = next((experiment for experiment in experiments if experiment.family == "paper_full"), None)
-    if full is not None and "Entropic" in objectives and len(full.settings.instruments) == 2:
-        run = full.get_run("Entropic", _replicate(full))
-        largest = run["metrics"]["max_loss"]
-        weight = 100 * run["metrics"]["entropic_max_weight"]
-        counts = [int(np.count_nonzero(np.asarray(experiment.losses("Entropic", _replicate(experiment))) >= threshold)) for experiment in experiments]
-        paragraph += (
-            f"At {threshold:g}, entropic-panel counts are " + " / ".join(f"{count:,}" for count in counts)
-            + " in colored-legend order. "
-            f"The two-asset policy's largest hedging loss is {largest:.3f}; one such path contributes {weight:.1f}% of its exponential sum. "
+        ticks = [10.0 ** power for power in range(-10, 3) if one_path <= 10.0 ** power <= 100]
+        axis.set_yticks(ticks)
+        axis.set_yticklabels([f"{tick:g}%" for tick in ticks])
+        axis.yaxis.set_minor_formatter(NullFormatter())
+        axis.set_ylim(one_path / 1.8, 125)
+        axis.axhline(one_path, linestyle=":", linewidth=1, alpha=0.45)
+        axis.text(
+            0.99, one_path / 1.12, f"1 of {len(no_hedge):,} scenarios = {one_path:.4g}%",
+            transform=axis.get_yaxis_transform(), ha="right", va="top", fontsize=9,
         )
-    paragraph += "Each curve ends at its sample maximum, which is not a bound on future losses. "
-    paragraph += "The displayed training replicate was chosen before examining test performance."
-    subtitle = f"Preselected replicate {_replicate(reference)}; {sample_size:,} test paths; losses before premium."
-    if reference.metadata.get("evaluation_kind") == "historical":
-        paragraph = (
-            "At a chosen horizontal threshold, read the percentage of supplied historical episodes with at least that loss. "
-            "The logarithmic vertical scale reveals rare losses. Each curve ends at its observed sample maximum, "
-            "which is not a bound on future loss. Scores use the configured frozen training replicate and no premium."
+        if threshold is not None:
+            if not np.isfinite(threshold):
+                raise ValueError("threshold must be finite or None.")
+            axis.axvline(threshold, linestyle=":", linewidth=1, alpha=0.6)
+            axis.text(
+                threshold, 0.98, f"  Threshold = {threshold:g}",
+                transform=axis.get_xaxis_transform(), ha="left", va="top", fontsize=9,
+            )
+        explanation = (
+            "Choose a loss threshold on the horizontal axis, then read the percentage of "
+            "evaluation scenarios with loss at least that large. A lower curve at that threshold "
+            "means fewer exceedances. The vertical axis is logarithmic: adjacent decade ticks "
+            "represent a factor of ten. Each open endpoint is the largest loss in that sample, "
+            "not a bound on future loss. The dotted horizontal line marks one scenario. "
+            "A horizontal tail is an interval with no intervening observed losses, not missing data. "
+            "All sample extremes are shown, without smoothing or interpolation of probabilities. "
+            "These are scenario frequencies, not the exponential weights used by entropic risk. "
+            "The figure uses the configured display replicate (or the requested replicate), "
+            "not a pooled sample of training runs."
         )
-        subtitle = f"Historical evaluation; configured replicate {_replicate(reference)}; {sample_size:,} episodes."
-    _finish(figure, axes, "Why can a few bad hedges matter so much?", paragraph, subtitle)
+        if name == "Entropic":
+            details = []
+            lam = reference.settings.risk_aversion
+            for label, losses in series[:-1]:
+                weights = np.exp(lam * (losses - losses.max()))
+                largest_weight = 100 / weights.sum()
+                details.append(
+                    f"{label}: maximum loss {losses.max():.3f}; one maximum-loss scenario "
+                    f"has {largest_weight:.1f}% of the exponential weight"
+                )
+            explanation += " For the displayed runs, " + "; ".join(details) + "."
+        output[name] = _finish(
+            figure, axis, _filename("tails", experiments, name), explanation, show, explain, save_dir,
+        )
+    return output if not show else None
 
-    
-    
-    
-def plot_learning_simple(experiment, objective="CVaR", replicate=0, dpi=200):
-    """Plot one training run's recorded validation scores."""
-    import matplotlib.pyplot as plt
 
-    run = experiment.get_run(objective, replicate)
-    history = sorted(run["history"], key=lambda row: row["update"])
-
-    if not history:
-        raise ValueError("This run has no recorded validation history.")
-
-    updates = [row["update"] for row in history]
-    risks = [row["risk"] for row in history]
-
-    fig, ax = plt.subplots(figsize=(8, 5), dpi=dpi)
-
-    ax.plot(
-        updates,
-        risks,
-        marker="o",
-        linewidth=2,
-        markersize=5,
+def plot_paths(experiments, *, dpi=DEFAULT_DPI, figsize=DEFAULT_SIZE,
+               show=True, explain=False, save_dir=None):
+    """Display example stock paths, then the corresponding liability payments."""
+    experiments = _experiments(experiments)
+    experiment = experiments[0]
+    prices = np.asarray(experiment.arrays["example_prices"], dtype=float)
+    stock = prices[:, :, 0] if prices.ndim == 3 else prices
+    stock = stock[:6]
+    supplied = (
+        experiment.metadata.get("evaluation_kind") == "historical"
+        or not experiment.metadata.get("default_call_payoff", True)
     )
-
-    if objective == "CVaR":
-        criterion = f"CVaR: worst {100 * (1 - experiment.settings.alpha):g}%"
+    figure, axis = _figure(
+        "Example stock paths", "Trading step", "First stock price", dpi, figsize,
+    )
+    line_colors = []
+    for index, path in enumerate(stock, start=1):
+        line, = axis.plot(np.arange(len(path)), path, linewidth=1.8, label=f"Path {index}")
+        line_colors.append(line.get_color())
+    if not supplied:
+        axis.axhline(experiment.settings.strike, linestyle="--", linewidth=1.3, label="Strike")
+    explanation = (
+        "Each line follows the first stock in one stored evaluation scenario. "
+        "The plotted scenarios are examples, not forecasts or independent training runs. "
+        "For a multi-stock portfolio this is only its first stock."
+    )
+    output = {"paths": _finish(
+        figure, axis, _filename("paths", experiments), explanation, show, explain, save_dir,
+    )}
+    if supplied:
+        payments = np.asarray(experiment.arrays["example_payoffs"], dtype=float)[:len(stock)]
+        figure, axis = _figure(
+            "Liability payments for the displayed paths", "Path", "Supplied liability payment",
+            dpi, figsize,
+        )
+        axis.bar(np.arange(1, len(payments) + 1), payments, color=line_colors)
+        axis.set_xticks(np.arange(1, len(payments) + 1))
+        explanation = (
+            "Each bar is the supplied payment for the correspondingly numbered path. "
+            "Colors match the stock-path graph. Payments are read from the evaluation data; "
+            "they are not reconstructed from the first stock."
+        )
     else:
-        criterion = f"Entropic risk: lambda = {experiment.settings.risk_aversion:g}"
+        strike = experiment.settings.strike
+        terminal = stock[:, -1]
+        grid = np.linspace(min(stock.min(), strike * 0.95), max(stock.max(), strike * 1.05), 200)
+        figure, axis = _figure(
+            r"The call payment we owe: $(S_T-K)^+$", "Stock price at maturity", "Call payment",
+            dpi, figsize,
+        )
+        axis.plot(grid, np.maximum(grid - strike, 0), linewidth=1.8, linestyle="--")
+        for value, color in zip(terminal, line_colors):
+            axis.scatter(value, max(value - strike, 0), s=70, color=color, zorder=3)
+        explanation = (
+            f"The call pays zero below the strike {strike:g}, and the excess above it otherwise. "
+            "The dots use the same path colors as the preceding stock-path graph. "
+            "This is a liability payment, before trading gains, costs, or an option premium."
+        )
+    output["payoffs"] = _finish(
+        figure, axis, _filename("payoffs", experiments), explanation, show, explain, save_dir,
+    )
+    return output if not show else None
 
-    ax.set_title(f"{experiment.name} | {criterion}", fontsize=14)
-    ax.set_xlabel("Updates after warm-up", fontsize=13)
-    ax.set_ylabel("Validation risk", fontsize=13)
 
-    ax.tick_params(labelsize=11)
-    ax.ticklabel_format(axis="y", style="plain", useOffset=False)
-    ax.grid(alpha=0.2)
-
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
-
-    fig.tight_layout()
-    plt.show()
-    plt.close(fig)
-
-    return fig, ax
+def show_published_figure(number, *, dpi=DEFAULT_DPI, figsize=(10, 6),
+                          show=True, explain=False, save_dir=None):
+    """Show original paper artwork, using its original SVG in Jupyter."""
+    metadata = json.loads((PROJECT_ROOT / "assets" / "paper" / "metadata.json").read_text())
+    entry = metadata["figures"][str(number)]
+    image_path = PROJECT_ROOT / entry["image"]
+    svg_path = PROJECT_ROOT / entry.get("original_svg", "missing.svg")
+    if save_dir is not None:
+        import shutil
+        folder = Path(save_dir)
+        folder.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(image_path, folder / f"paper_figure_{int(number):02d}.png")
+        if svg_path.is_file():
+            shutil.copyfile(svg_path, folder / f"paper_figure_{int(number):02d}.svg")
+    if show and svg_path.is_file():
+        try:
+            from IPython import get_ipython
+            from IPython.display import Markdown, SVG, display
+            if get_ipython() is not None and hasattr(get_ipython(), "kernel"):
+                display(Markdown("### " + entry["title"]))
+                display(SVG(filename=str(svg_path)))
+                if explain:
+                    note = entry["interpretation_markdown"] + " " + entry["comparison_note_markdown"]
+                    display(Markdown(note))
+                return None
+        except ImportError:
+            pass
+    figure = plt.figure(figsize=figsize, dpi=dpi)
+    axis = figure.add_subplot(111)
+    axis.imshow(plt.imread(image_path))
+    axis.axis("off")
+    axis.set_title(entry["title"], fontsize=14, pad=16)
+    pair = _finish(
+        figure, axis, f"paper_display_{number}", entry["interpretation_markdown"],
+        show, explain, None,
+    )
+    return {"published": pair} if not show else None
