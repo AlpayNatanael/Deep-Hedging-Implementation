@@ -813,6 +813,8 @@ class generalNN:
     def _evaluate_data(self, data):
         if not self.runs:
             raise RuntimeError("Train or load selected policies before evaluating them.")
+        # A benchmark from an earlier test set must not survive reevaluation.
+        self.metadata.pop("heston_benchmark", None)
         self.arrays = {}
         for report in self.runs:
             losses, costs = self._score(self.models[report["run_id"]], data)
@@ -839,12 +841,13 @@ class generalNN:
 
     # Evaluate selected policies and store results for the plotting functions.
     # Input data, when supplied, becomes the checked test set; otherwise use
-    # or generate stored test data. include_delta adds the synthetic stock-delta
-    # benchmark. Historical result objects can only replay their stored data.
+    # or generate stored test data. include_delta retains the old stock-only
+    # benchmark. include_heston uses all enabled built-in Heston instruments.
+    # Historical result objects can only replay their stored data.
     # Return this experiment; this method does not adjust model weights.
-    def evaluate(self, data=None, include_delta=False):
+    def evaluate(self, data=None, include_delta=False, include_heston=False):
         if self.metadata.get("evaluation_kind") == "historical":
-            if data is not None or include_delta:
+            if data is not None or include_delta or include_heston:
                 raise ValueError("Use evaluate_historical for new historical observations; the analytical delta benchmark is synthetic.")
             return self._evaluate_data(self.data["historical"])
         if data is not None:
@@ -854,6 +857,8 @@ class generalNN:
         self._evaluate_data(self.data["test"])
         if include_delta:
             self._add_delta_benchmark(self.data["test"])
+        if include_heston:
+            self._add_heston_benchmark(self.data["test"])
         return self
 
     # Check the format and declared conventions of supplied historical data.
@@ -1086,6 +1091,35 @@ class generalNN:
         losses, costs = self.calculate_losses(data, holdings)
         self.arrays["benchmark_loss_stock_delta"] = losses.numpy()
         self.benchmarks["stock_delta"] = summarize(losses, costs, self.settings)
+
+    def _add_heston_benchmark(self, data):
+        """Score a classical Heston hedge on the existing test observations."""
+        # This calculation uses model sensitivities, with no network training.
+        holdings, diagnostics = heston_model_holdings(data, self.settings)
+        holdings = torch.as_tensor(holdings, dtype=data.prices.dtype,
+                                   device=data.prices.device)
+
+        # Reuse exactly the networks' gains, transaction costs and loss formula.
+        losses, costs = self.calculate_losses(data, holdings)
+        self.arrays["benchmark_loss_heston"] = losses.cpu().numpy()
+        self.arrays["benchmark_costs_heston"] = costs.cpu().numpy()
+        self.arrays["benchmark_holdings_heston"] = holdings.cpu().numpy()
+        self.benchmarks["heston"] = summarize(losses, costs, self.settings)
+
+        # Record the scenario identity and actual enabled instruments so plots
+        # cannot silently compare this baseline with a different trading set.
+        full_hedge = diagnostics["kind"] == "stock_and_variance"
+        self.metadata["heston_benchmark"] = {
+            "label": ("Heston stock + variance hedge" if full_hedge
+                      else "Heston stock-delta hedge"),
+            "test_data_id": data.fingerprint(True),
+            "instruments": sorted([
+                (item.name, item.kind, item.stock_index, item.multiplier,
+                 self.settings.cost_rate if item.cost_rate is None else item.cost_rate)
+                for item in self.settings.instruments if item.tradable
+            ]),
+            "diagnostics": diagnostics,
+        }
 
 
 # Numerical helpers: the existing simulator, risk formulas and delta benchmark.
@@ -1525,3 +1559,196 @@ def delta_holdings(prices, variances, settings, *, return_diagnostics=False,
     diagnostics["seconds"] = time.perf_counter() - start
     result = torch.as_tensor(holdings, dtype=prices.dtype, device=prices.device)
     return (result, diagnostics) if return_diagnostics else result
+
+
+# Classical Heston hedge for the single-call comparison experiment.
+def _heston_array(values):
+    """Read a CPU NumPy array without changing the supplied observations."""
+    if hasattr(values, "detach"):
+        values = values.detach().cpu().numpy()
+    return np.asarray(values, dtype=np.float64)
+
+
+def _characteristic_variance_derivative(frequency, maturity, variance, settings):
+    """Differentiate the Heston characteristic function in CURRENT variance."""
+    u = np.asarray(frequency, dtype=complex)
+    beta = settings.mean_reversion - 1j * settings.correlation * settings.vol_of_vol * u
+    root = np.sqrt(beta**2 + settings.vol_of_vol**2 * (u**2 + 1j * u))
+    ratio = (beta - root) / (beta + root)
+    decay = np.exp(-root * maturity)
+
+    # In the existing characteristic function, log(phi) = C + D * variance.
+    # Therefore d(phi)/d(variance) = D * phi.
+    coefficient = (beta - root) / settings.vol_of_vol**2
+    coefficient *= -np.expm1(-root * maturity) / (1 - ratio * decay)
+    return coefficient * _characteristic(frequency, maturity, variance, settings)
+
+
+def _heston_greek_curve(variance, maturity, settings, domain_factor, resolution,
+                        include_variance):
+    """Compute stock delta and variance sensitivity on one log-price grid."""
+    # Keep the existing stock-delta calculation and its probability checks.
+    grid, delta, diagnostics = _delta_curve(
+        variance, maturity, settings, domain_factor, resolution
+    )
+    sensitivity = np.zeros_like(grid)
+    if include_variance:
+        count = len(grid) - 1
+        indices = np.arange(1, count)
+        frequencies = indices * math.pi / (2 * grid[-1])
+        derivatives = []
+
+        # The two Fourier probabilities give price = spot * P1 - strike * P2.
+        for shift in (1.0, 0.0):
+            derivative = _characteristic_variance_derivative(
+                frequencies - 1j * shift, maturity, variance, settings
+            )
+            coefficients = np.real(derivative * np.exp(1j * frequencies * grid[-1]))
+            cdf_derivative = np.zeros(count + 1)
+            cdf_derivative[1:-1] = dst(coefficients / (indices * math.pi), type=1)
+            derivatives.append(-cdf_derivative[::-1])
+
+        sensitivity = settings.strike * (
+            np.exp(grid) * derivatives[0] - derivatives[1]
+        )
+    if not np.isfinite(sensitivity).all():
+        raise RuntimeError("A Heston variance-sensitivity grid became nonfinite.")
+    return grid, delta, sensitivity, diagnostics
+
+
+def heston_greeks(stock_prices, variances, settings, *, include_variance=True,
+                   variance_step=0.03, domain_factor=8.0, resolution=32.0):
+    """Return two (paths, trading_days) NumPy arrays and numerical diagnostics.
+
+    Only the state at the current decision date is queried. Curves are shared
+    by all paths using the same variance-grid node. The grids are determined
+    by the market parameters and state, not by sample-wide normalization.
+    """
+    _validate_parameters(settings)
+    prices, states = _heston_array(stock_prices), _heston_array(variances)
+    if prices.ndim != 2 or prices.shape != states.shape or not len(prices):
+        raise ValueError("Supply matching (paths, dates) stock and variance arrays.")
+    if prices.shape[1] != settings.number_of_days + 1:
+        raise ValueError("The observed dates do not match the trading horizon.")
+    if (not np.isfinite(prices).all() or not np.isfinite(states).all()
+            or np.any(prices <= 0) or np.any(states < 0)):
+        raise ValueError("Stock prices must be positive and variances nonnegative.")
+    if (not np.isfinite([variance_step, domain_factor, resolution]).all()
+            or min(variance_step, domain_factor, resolution) <= 0):
+        raise ValueError("Heston grid controls must be positive and finite.")
+
+    delta = np.zeros((len(prices), settings.number_of_days))
+    sensitivity = np.zeros_like(delta)
+    diagnostics = {
+        "variance_step": variance_step, "domain_factor": domain_factor,
+        "resolution": resolution, "curves_computed": 0,
+        "maximum_fourier_nodes": 0, "interpolation_queries": 0,
+        "remote_tail_interpolations": 0,
+    }
+
+    for day in range(settings.number_of_days):
+        remaining = (settings.number_of_days - day) * settings.time_step
+        log_price = np.log(prices[:, day] / settings.strike)
+
+        # Fixed log-variance coordinates remain well defined at variance zero.
+        scale = settings.mean_reversion * settings.long_run_variance * remaining
+        coordinate = np.log1p(states[:, day] / scale) / variance_step
+        lower = np.floor(coordinate).astype(int)
+        fraction = coordinate - lower
+        upper = lower + 1
+        nodes = np.unique(np.concatenate([lower, upper[fraction > 0]]))
+
+        for node in nodes:
+            grid_variance = scale * math.expm1(float(node) * variance_step)
+            grid, delta_grid, sensitivity_grid, info = _heston_greek_curve(
+                grid_variance, remaining, settings, domain_factor,
+                resolution, include_variance,
+            )
+            diagnostics["curves_computed"] += 1
+            diagnostics["maximum_fourier_nodes"] = max(
+                diagnostics["maximum_fourier_nodes"], info["fourier_nodes"]
+            )
+
+            for mask, weight in (
+                (lower == node, 1 - fraction),
+                ((upper == node) & (fraction > 0), fraction),
+            ):
+                queries = log_price[mask]
+                delta[mask, day] += weight[mask] * np.interp(
+                    queries, grid, delta_grid
+                )
+                sensitivity[mask, day] += weight[mask] * np.interp(
+                    queries, grid, sensitivity_grid
+                )
+                diagnostics["interpolation_queries"] += len(queries)
+                diagnostics["remote_tail_interpolations"] += int(np.count_nonzero(
+                    (queries < grid[0]) | (queries > grid[-1])
+                ))
+
+    # Outside the Fourier grid, np.interp uses the documented asymptotic
+    # endpoints: delta 0/1 and variance sensitivity 0. Counts are reported above.
+    if not np.isfinite(delta).all() or not np.isfinite(sensitivity).all():
+        raise RuntimeError("Nonfinite Heston sensitivities; evaluation stopped.")
+    return delta, sensitivity, diagnostics
+
+
+def heston_model_holdings(data, settings, *, variance_step=None,
+                           domain_factor=8.0, resolution=None):
+    """Return holdings in configured contract units for one synthetic call.
+
+    This first implementation supports one underlying, one tradable stock,
+    and at most one tradable integrated-variance claim. Other liabilities
+    and observed/historical instruments require their own model specification.
+    """
+    if len(settings.stocks) != 1 or data.metadata.get("kind") != "synthetic":
+        raise ValueError("The Heston benchmark supports one synthetic call.")
+    active = [item for item in settings.instruments if item.tradable]
+    if (sum(item.kind == "stock" for item in active) != 1
+            or sum(item.kind == "variance" for item in active) > 1
+            or any(item.kind not in {"stock", "variance"} for item in active)):
+        raise ValueError("Use one stock and optionally one variance claim.")
+
+    stock = settings.stocks[0]
+    prices = _heston_array(data.stock_prices)[:, :, 0]
+    states = _heston_array(data.variances)[:, :, 0]
+    expected = stock.call_quantity * np.maximum(prices[:, -1] - stock.strike, 0)
+    if not np.array_equal(_heston_array(data.payoffs), expected):
+        raise ValueError("The supplied liability is not the configured call payoff.")
+    if np.any(_heston_array(data.cashflows) != 0):
+        raise ValueError("The built-in Heston instruments have no intermediate cashflows.")
+
+    full_hedge = any(item.kind == "variance" for item in active)
+    # Stock-only defaults reproduce the existing delta benchmark's grid.
+    # The additional variance sensitivity uses a finer grid by default.
+    variance_step = (0.03 if full_hedge else 0.06) if variance_step is None else variance_step
+    resolution = (32.0 if full_hedge else 16.0) if resolution is None else resolution
+    delta, sensitivity, diagnostics = heston_greeks(
+        prices, states, settings.for_stock(0), include_variance=full_hedge,
+        variance_step=variance_step, domain_factor=domain_factor,
+        resolution=resolution,
+    )
+
+    remaining = np.arange(settings.number_of_days, 0, -1) * settings.time_step
+    loading = -np.expm1(-stock.mean_reversion * remaining) / stock.mean_reversion
+    holdings = np.zeros((len(prices), settings.number_of_days, settings.output_size))
+
+    for index, instrument in enumerate(settings.instruments):
+        if not instrument.tradable:
+            continue
+        if instrument.kind == "stock":
+            if not np.array_equal(_heston_array(data.prices)[:, :, index], prices):
+                raise ValueError("Stock instrument quotes do not match the underlying.")
+            holdings[:, :, index] = stock.call_quantity * delta / instrument.multiplier
+        elif instrument.kind == "variance":
+            # calculate_losses multiplies raw quotes by this contract multiplier.
+            # Dividing holdings by it here prevents double-counting the notional.
+            holdings[:, :, index] = (
+                stock.call_quantity * sensitivity
+                / (instrument.multiplier * loading)
+            )
+
+    if not np.isfinite(holdings).all():
+        raise RuntimeError("Nonfinite Heston holdings; evaluation stopped.")
+    diagnostics["kind"] = "stock_and_variance" if full_hedge else "stock_only"
+    return holdings, diagnostics
+
