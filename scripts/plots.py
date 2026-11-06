@@ -5,6 +5,24 @@ Use objective="CVaR" or objective="Entropic" to display just one objective.
 Use explain=True for a separate interpretation below the figure, and
 save_dir="figures" to export 300-dpi PNGs and vector SVGs.
 No data, scores, model weights, or training settings are changed.
+
+All seven public plotting functions are retained:
+    plot_learning, plot_learning_simple, plot_losses, plot_risk,
+    plot_loss_tails, plot_paths, and show_published_figure.
+
+The first five accept objective="CVaR" or objective="Entropic".
+Omitting objective displays all common fitted objectives, except that
+plot_learning_simple defaults to a single CVaR run. Objective names are
+case-insensitive. Market paths and published figures do not depend on an
+objective, so plot_paths and show_published_figure do not take that argument.
+
+Example notebook calls after installing this file as scripts/plots.py:
+    from scripts import plots
+    plots.plot_risk([ours, ours_variance], objective="CVaR")
+    plots.plot_loss_tails([ours, ours_variance], objective="Entropic")
+
+If plots was already imported, run importlib.reload(plots) after replacing
+the file. Use print(plots.__file__) to check which file the notebook imports.
 """
 
 import io
@@ -69,15 +87,27 @@ def _experiments(value, match_test=True):
 
 
 def _objectives(experiments, objective):
+    """Choose one fitted objective, or every objective shared by the experiments."""
+    selected = None
+    if objective is not None:
+        names = {name.casefold(): name for name in OBJECTIVES}
+        selected = names.get(str(objective).strip().casefold())
+        if selected is None:
+            raise ValueError("objective must be None, 'CVaR', or 'Entropic'.")
     common = [
         name for name in OBJECTIVES
         if all(any(run["objective"] == name for run in item.runs) for item in experiments)
     ]
-    if objective is not None:
-        names = {name.lower(): name for name in OBJECTIVES}
-        selected = names.get(str(objective).lower())
+    if selected is not None:
         if selected not in common:
-            raise ValueError("Choose an available objective: " + ", ".join(common))
+            missing = [
+                str(item.name) for item in experiments
+                if not any(run["objective"] == selected for run in item.runs)
+            ]
+            raise ValueError(
+                f"No fitted {selected} run is available for: " + ", ".join(missing)
+                + ". Available common objectives: " + (", ".join(common) or "none") + "."
+            )
         return [selected]
     if not common:
         raise ValueError("No common fitted objective is available.")
@@ -260,7 +290,11 @@ def plot_learning_simple(experiment, objective="CVaR", replicate=0, dpi=DEFAULT_
 
 def plot_losses(experiments, objective=None, replicate=None, *, bins=80,
                 dpi=DEFAULT_DPI, figsize=DEFAULT_SIZE, show=True, explain=False, save_dir=None):
-    """Plot full-range loss histograms; no tail observations are removed."""
+    """Plot full-range loss histograms; no tail observations are removed.
+
+    Use objective="CVaR" or objective="Entropic" for one objective.
+    With objective=None, display every common fitted objective separately.
+    """
     experiments = _experiments(experiments)
     reference = experiments[0]
     no_hedge = _array(reference.arrays["benchmark_loss_no_hedge"])
@@ -300,7 +334,11 @@ def plot_losses(experiments, objective=None, replicate=None, *, bins=80,
 
 def plot_risk(experiments, objective=None, *, dpi=DEFAULT_DPI, figsize=DEFAULT_SIZE,
               show=True, explain=False, save_dir=None):
-    """Compare objective-specific test risks and variation across training runs."""
+    """Compare objective-specific test risks and variation across training runs.
+
+    Use objective="CVaR" or objective="Entropic" for one objective.
+    With objective=None, display every common fitted objective separately.
+    """
     experiments = _experiments(experiments)
     reference = experiments[0]
     output = {}
@@ -362,6 +400,10 @@ def plot_loss_tails(experiments, threshold=5.0, *, objective=None, replicate=Non
     Each objective has a separate full-size figure. All sample extremes are
     retained. Open endpoint circles mark the observed maxima; no smoothing,
     binning, truncation, or extrapolation is used.
+
+    Use objective="CVaR" or objective="Entropic" for one objective, or omit
+    it for every common fitted objective. The second positional argument
+    remains threshold, so pass the objective by keyword.
     """
     experiments = _experiments(experiments)
     reference = experiments[0]
@@ -441,7 +483,10 @@ def plot_loss_tails(experiments, threshold=5.0, *, objective=None, replicate=Non
 
 def plot_paths(experiments, *, dpi=DEFAULT_DPI, figsize=DEFAULT_SIZE,
                show=True, explain=False, save_dir=None):
-    """Display example stock paths, then the corresponding liability payments."""
+    """Display example stock paths, then the corresponding liability payments.
+
+    These evaluation scenarios do not depend on the training objective.
+    """
     experiments = _experiments(experiments)
     experiment = experiments[0]
     prices = np.asarray(experiment.arrays["example_prices"], dtype=float)
