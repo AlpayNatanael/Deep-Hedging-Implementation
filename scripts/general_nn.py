@@ -125,11 +125,22 @@ class DataSet: # Stores market scenarios, instrument prices, and the payments we
 class _TradingPolicy(nn.Module): #main thing to read to understand what the NN sees.
     """Independent daily networks, with previous holdings fed to the next day."""
     def __init__(self, settings, method):
+        # Initialize the parent PyTorch class so it can track layers and parameters.
         super().__init__()
+
+        # Store the settings that describe the market, instruments, and network.
         self.settings = settings
+
+        # Store the policy version, "ours" or "paper", which controls input scaling.
         self.method = method
+
+        # Create an empty PyTorch list to hold a separate network for each trading day.
         self.networks = nn.ModuleList()
+
+        # Choose Tanh or ReLU as the activation function for the hidden layers.
         activation = nn.Tanh if settings.network.activation == "tanh" else nn.ReLU
+        
+        
         for day in range(settings.number_of_days):
             layers = []
             previous_size = settings.input_size
@@ -144,6 +155,83 @@ class _TradingPolicy(nn.Module): #main thing to read to understand what the NN s
             self.networks.append(nn.Sequential(*layers))
 
     def forward(self, stock_prices, variances):
+        """Calculate daily holdings from the supplied market paths."""
+
+        # Start each path with zero holdings in every trading instrument.
+        previous = stock_prices.new_zeros(
+            len(stock_prices),
+            self.settings.output_size,
+        )
+
+        # Collect the holdings chosen on each trading day.
+        decisions = []
+
+        # Use the corresponding network for each trading day.
+        for day, network in enumerate(self.networks):
+
+            # Collect the input features for the current day.
+            features = []
+
+            # Add the current price and variance features for each stock.
+            for stock_index, stock in enumerate(self.settings.stocks):
+
+                # Read this stock's price for every path on the current day.
+                price = stock_prices[:, day, stock_index]
+
+                # Read this stock's variance for every path on the current day.
+                variance = variances[:, day, stock_index]
+
+                # Compute a fixed reference scale for log-price movements.
+                price_scale = math.sqrt(
+                    stock.initial_variance * self.settings.maturity
+                )
+
+                # Express the price relative to the strike and reference scale.
+                scaled_price = torch.log(price / stock.strike) / price_scale
+
+                # Express variance as a relative change from its initial value.
+                scaled_variance = variance / stock.initial_variance - 1
+
+                # Add both features using the same scaling for every batch.
+                features.extend([scaled_price, scaled_variance])
+
+            # Add the previous holding in each trading instrument.
+            for instrument_index in range(self.settings.output_size):
+                features.append(previous[:, instrument_index])
+
+            # Arrange the features into one row per path.
+            inputs = torch.stack(features, dim=1)
+
+            # Pass today's inputs through today's network to choose holdings.
+            holdings = network(inputs)
+
+            # Force holdings to zero for instruments disabled in the settings.
+            if any(
+                not instrument.tradable
+                for instrument in self.settings.instruments
+            ):
+                holdings = torch.stack(
+                    [
+                        holdings[:, instrument_index]
+                        if instrument.tradable
+                        else torch.zeros_like(holdings[:, instrument_index])
+                        for instrument_index, instrument
+                        in enumerate(self.settings.instruments)
+                    ],
+                    dim=1,
+                )
+
+            # Save the holdings chosen for this day.
+            decisions.append(holdings)
+
+            # Use today's holdings as the previous holdings on the next day.
+            previous = holdings
+
+        # Return holdings with shape: (paths, trading days, instruments).
+        return torch.stack(decisions, dim=1)
+            
+            
+    def forward1(self, stock_prices, variances):
         previous = stock_prices.new_zeros(len(stock_prices), self.settings.output_size)
         decisions = []
         for day, network in enumerate(self.networks):
@@ -151,12 +239,36 @@ class _TradingPolicy(nn.Module): #main thing to read to understand what the NN s
             for index, stock in enumerate(self.settings.stocks):
                 price = stock_prices[:, day, index]
                 variance = variances[:, day, index]
+                
+                # Use scaled price and variance inputs for our policy.
                 if self.method == "ours":
-                    scale = math.sqrt(stock.initial_variance * self.settings.maturity)
-                    features.extend([torch.log(price / stock.strike) / scale,
-                                     variance / stock.initial_variance - 1])
+
+                    # Compute a reference scale for log-price movements
+                    # using the initial variance and the total time horizon.
+                    scale = math.sqrt(
+                        stock.initial_variance * self.settings.maturity
+                    )
+
+                    features.extend([
+                        # Measure the price relative to the strike,
+                        # then divide by the reference scale.
+                        torch.log(price / stock.strike) / scale,
+
+                        # Measure how much the current variance differs
+                        # from its initial value, as a proportion of that value.
+                        variance / stock.initial_variance - 1,
+                    ])
+
                 else:
-                    features.extend([torch.log(price), variance])
+                    # Use the paper-style inputs without the extra scaling.
+                    features.extend([
+                        # Use the logarithm of the current stock price.
+                        torch.log(price),
+
+                        # Use the current variance in its original units.
+                        variance,
+                    ])
+                    
             features.extend(previous[:, index] for index in range(self.settings.output_size))
             holdings = network(torch.stack(features, dim=1))
             if any(not item.tradable for item in self.settings.instruments):
@@ -170,38 +282,93 @@ class _TradingPolicy(nn.Module): #main thing to read to understand what the NN s
 
 
 class generalNN:
-    """Own a network design, its data, training records and measured results.
+    """
+    Create neural network, data, training history, and results together.
 
-    method is required: 'ours' or 'paper'. dynamic_data selects new batches
-    at each update or random sampling from one fixed training dataset.
+    Chose which network design to use "ours" or "paper"
+        
+    Choose where the training data comes from (technically redundent with the above)
+        dynamic_data=True: generate new simulated scenarios for each update.
+        dynamic_data=False: randomly select scenarios from a fixed dataset.
     """
     def __init__(self, method, settings=None, dynamic_data=True, training_data=None,
                  data_generator=None, name=None):
         if not isinstance(dynamic_data, bool):
             raise TypeError("dynamic_data must be a boolean.")
+        # Store the network preset: "ours" or "paper".
+        # This does not choose between static and dynamic training data.
         self.method = method
+
+        # Use the supplied settings, or create default settings if none were given.
+        # Then fill in the network and instrument choices for the selected preset.
         self.settings = (settings or Settings()).resolve(method)
+
+        # Store the experiment family: "ours", "paper_full", or "paper_stock".
         self.family = self.settings.method
+
+        # Use the supplied display name, or the default name for this family.
         self.name = name or FAMILIES[self.family]
-        if name is None and (len(self.settings.stocks) != 1 or
-                             self.settings.output_size != (1 if method == "ours" else 2)):
+
+        # If no name was supplied and the stock or instrument counts differ
+        # from the usual preset, create a name showing the instrument count.
+        if name is None and (
+            len(self.settings.stocks) != 1
+            or self.settings.output_size != (1 if method == "ours" else 2)
+        ):
             self.name = f"{method}: {self.settings.output_size} instruments"
+
+        # True: generate fresh training batches.
+        # False: sample batches from a fixed training dataset.
         self.dynamic_data = dynamic_data
+
+        # Store an optional custom function for generating market data.
+        # If this is None, use the built-in market simulator.
         self.data_generator = data_generator
+
+        # Build the initial trading policy, with one network per trading day.
         self.network = self._make_network()
+
+        # Store the selected trained policy for each risk objective and replicate.
         self.models = {}
+
+        # Store datasets, such as training, validation, test, and calibration data.
         self.data = {}
+
+        # Store each training run's history, selected checkpoint details, and scores.
         self.runs = []
+
+        # Store numerical result arrays, such as each evaluated path's loss and cost.
         self.arrays = {}
+
+        # Store summary scores for reference strategies, such as no hedge or delta hedging.
         self.benchmarks = {}
+
+        # Record summaries of individual training batches, including losses and costs.
         self.batch_records = []
+
+        # Store complete training batches when retain_training_batches is True.
+        # Otherwise, the raw training batches are not kept here.
         self.training_batches = {}
+
+        # Keep the evaluation results each time validate() is called.
         self.measurements = []
+
+        # Store named results from evaluating policies on supplied historical data.
         self.historical_results = {}
+
+        # Store descriptive information about the experiment.
         self.metadata = {
+
+            # Name of the numerical scheme used by the built-in market simulator.
             "simulation_scheme": SIMULATION_SCHEME,
+
+            # Identify this object as a newly created experiment.
             "origin": "New experiment",
+
+            # Record whether training uses fresh batches or a fixed dataset.
             "batch_mode": "dynamic" if dynamic_data else "static",
+
+            # Describe the loss convention and which trading fees are included.
             "accounting": "Loss before premium; opening and rebalancing fees; no maturity fee.",
         }
         if training_data is not None:
@@ -314,11 +481,22 @@ class generalNN:
         return self
 
     def _batch(self, size, generator, seed, role):
+
         if self.dynamic_data:
-            return self._generate(size, generator, seed, role), None
-        pool = self.data["training"]
-        indices = generator.integers(0, len(pool), size=size)
-        return pool.select(indices, role), indices
+            # Generate a fresh batch of complete market paths.
+            batch = self._generate(size, generator, seed, role)
+            return batch, None
+
+        else:
+            # Get the fixed training dataset.
+            pool = self.data["training"]
+
+            # Randomly choose which paths to include in this batch.
+            indices = generator.integers(0, len(pool), size=size)
+
+            # Return the selected paths and their indices.
+            batch = pool.select(indices, role)
+            return batch, indices
 
     def calculate_losses(self, data, holdings):
         """Generic self-financing accounting, using the supplied payoff vector."""
