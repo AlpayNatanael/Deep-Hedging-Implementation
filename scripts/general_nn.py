@@ -22,6 +22,10 @@ from scripts.settings import FAMILIES, OBJECTIVES, Settings
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
+# DATA CONTAINER: one row holds a complete market scenario.
+# Shape notation below: B = scenarios, N = trading intervals,
+# M = modeled stocks, D = configured trading instruments.
+# N + 1 observations are needed to calculate N holding-interval gains.
 @dataclass
 class DataSet: # Stores market scenarios, instrument prices, and the payments we owe.
     """Prices are raw per-unit quotes; payoffs are terminal currency payments."""
@@ -61,6 +65,12 @@ class DataSet: # Stores market scenarios, instrument prices, and the payments we
     # Extra information, such as data sources and accounting conventions.
     metadata: dict = field(default_factory=dict)
 
+    # Prepare the fields immediately after DataSet(...) creates an object.
+    # Input: the arrays and optional information stored in the fields above.
+    # Convert numeric data to CPU float64 tensors without attached gradients;
+    # add a missing stock dimension and create zero cashflows when omitted.
+    # Check shapes and values, then store dates as timestamp strings.
+    # Output: no return value; the prepared values replace the original fields.
     def __post_init__(self):
         for name in ("prices", "stock_prices", "variances", "payoffs"):
             value = torch.as_tensor(getattr(self, name), dtype=torch.float64).detach().cpu()
@@ -94,9 +104,15 @@ class DataSet: # Stores market scenarios, instrument prices, and the payments we
                 dates = np.asarray(value, dtype="datetime64[ns]")
                 setattr(self, name, np.datetime_as_string(dates, unit="ns").tolist())
 
+    # Make len(data) return the number of complete market scenarios.
+    # This is the number of rows in prices, not the number of trading dates.
     def __len__(self):
         return len(self.prices)
 
+    # Build a smaller DataSet containing the requested scenario rows.
+    # Input: row indices and an optional role label for the selected data.
+    # Select the same rows from prices, states, payoffs, cashflows and dates.
+    # Output: a new DataSet with copied metadata; the parent is not modified.
     def select(self, indices, role="training_batch"):
         """ selects entire scenarios, preserving all dates and instruments belonging to those scenarios."""
         values = {name: getattr(self, name)[indices]
@@ -108,6 +124,12 @@ class DataSet: # Stores market scenarios, instrument prices, and the payments we
                        instrument_names=self.instrument_names, stock_names=self.stock_names,
                        metadata=copy.deepcopy(self.metadata))
 
+    # Create a text identifier from the exact numerical array contents.
+    # scenarios_only=True hashes stock prices, variances and payoffs;
+    # False also hashes instrument prices and cashflows. Both include dates
+    # when supplied. Row order matters; other metadata are not included.
+    # Used by split checks and result records; it does not affect gradients.
+    # It detects identical whole datasets, not every possible partial overlap.
     def fingerprint(self, scenarios_only=False):
         """creates an identifier based on the contents"""
         names = ("stock_prices", "variances", "payoffs") if scenarios_only else (
@@ -122,8 +144,16 @@ class DataSet: # Stores market scenarios, instrument prices, and the payments we
         return digest.hexdigest()
 
 
+# NEURAL POLICY: trainable daily networks, separate from experiment storage.
+# This class returns holdings; the experiment calculates their financial loss.
 class _TradingPolicy(nn.Module): #main thing to read to understand what the NN sees.
     """Independent daily networks, with previous holdings fed to the next day."""
+    # Build the trainable layers; this does not perform any training.
+    # Input: resolved settings and the method name.
+    # Create a separate network for each trading date, using the configured
+    # hidden widths, activation, optional batch normalization and output size.
+    # Outputs are unconstrained target holdings, one per instrument.
+    # The active forward() below scales features for BOTH method names.
     def __init__(self, settings, method):
         # Initialize the parent PyTorch class so it can track layers and parameters.
         super().__init__()
@@ -153,6 +183,13 @@ class _TradingPolicy(nn.Module): #main thing to read to understand what the NN s
             layers.append(nn.Linear(previous_size, settings.output_size, dtype=torch.float64))
             self.networks.append(nn.Sequential(*layers))
 
+    # Compute all holdings using the active policy called by model(...).
+    # Inputs: stock_prices and variances, each shaped (B, N + 1, M).
+    # For each date, combine current scaled market features with previous
+    # holdings. The same scaling is used for ours and paper in THIS version.
+    # Use that date's network, then zero any disabled instrument holdings.
+    # Output: (B, N, D) holdings; previous decisions remain connected to
+    # later decisions for differentiation. Future rows are not input features.
     def forward(self, stock_prices, variances):
         """Calculate daily holdings from the supplied market paths."""
 
@@ -230,6 +267,11 @@ class _TradingPolicy(nn.Module): #main thing to read to understand what the NN s
         return torch.stack(decisions, dim=1)
             
             
+    # Keep the alternative feature-construction rule written in this file.
+    # Inputs and output shapes are the same as forward(). Here ours uses
+    # scaled features, while paper uses log(stock price) and raw variance.
+    # No other function in this file calls forward1; model(...) uses forward.
+    # This method runs only when explicitly called. It is left unchanged.
     def forward1(self, stock_prices, variances):
         previous = stock_prices.new_zeros(len(stock_prices), self.settings.output_size)
         decisions = []
@@ -280,6 +322,9 @@ class _TradingPolicy(nn.Module): #main thing to read to understand what the NN s
         return torch.stack(decisions, dim=1)
 
 
+# EXPERIMENT MANAGER: owns policies, scenario data, training and evaluations.
+# Normal workflow: construct -> train -> evaluate -> plot or save.
+# from_saved loads archived results instead of performing those calculations.
 class generalNN:
     """
     Create neural network, data, training history, and results together.
@@ -290,6 +335,13 @@ class generalNN:
         dynamic_data=True: generate new simulated scenarios for each update.
         dynamic_data=False: randomly select scenarios from a fixed dataset.
     """
+    # Create an experiment container and its initial, untrained policy.
+    # method selects a network preset; settings supplies the configuration.
+    # dynamic_data independently selects fresh batches or a fixed pool.
+    # Its default is True for BOTH methods in this supplied constructor.
+    # An optional generator supplies custom scenarios; fixed training_data
+    # is accepted only in static mode. No optimization starts here.
+    # Initialize storage for selected models, data, histories and results.
     def __init__(self, method, settings=None, dynamic_data=True, training_data=None,
                  data_generator=None, name=None):
         if not isinstance(dynamic_data, bool):
@@ -375,17 +427,28 @@ class generalNN:
                 raise ValueError("Use dynamic_data=False with a fixed training dataset.")
             self.load_data(training_data, "training")
 
+    # Read experiment.parameter_count to count scalars in network parameters.
+    # The total covers all daily networks, not all saved replicates.
+    # It excludes the auxiliary loss threshold created during training.
     @property
     def parameter_count(self):
         """See title"""
         return sum(parameter.numel() for parameter in self.network.parameters())
 
+    # Create one untrained policy using initialization_seed + replicate.
+    # The random-state context restores the surrounding CPU random state.
+    # Output: a _TradingPolicy with independently initialized daily layers;
+    # this function does not move the network to a GPU.
     def _make_network(self, replicate=0):
         """"This function creates a new, untrained trading policy with reproducible initial weights"""
         with torch.random.fork_rng(devices=[]):
             torch.manual_seed(self.settings.initialization_seed + replicate)
             return _TradingPolicy(self.settings, self.method)
 
+    # Accept a DataSet or construct one from a dictionary of its fields.
+    # Check that its horizon, instrument count, stock count and supplied
+    # name order match this experiment's settings.
+    # Return the checked DataSet, or raise an error for incompatible data.
     def _check_data(self, data):
         """"Checks that the data in the right format, with the right number of days, stocks, and instruments for this experiment."""
         if isinstance(data, dict):
@@ -403,6 +466,12 @@ class generalNN:
                 raise ValueError(f"{field_name} must match the configured order.")
         return data
 
+    # Screen supplied data for known reuse across experiment splits.
+    # Check reserved seed labels, exact scenario fingerprints, and overlap
+    # between overall date ranges when both datasets have dates.
+    # The exclusions in the loop define which stored datasets are compared.
+    # Output: no value; raise an error on a detected conflict. Passing these
+    # checks does not prove independence or rule out all partial duplication.
     def _check_separation(self, data, split):
         """"Checks that a new dataset is separate from training, validation, test, or historical data already in the experiment. It rejects reused seeds, identical simulated scenarios, or overlapping date ranges. """
         known_seeds = {self.settings.training_seed + 100 * replicate + stage
@@ -426,6 +495,10 @@ class generalNN:
                 if dates.min() <= other.max() and other.min() <= dates.max():
                     raise ValueError("Dated training and evaluation periods overlap.")
 
+    # Register supplied observations as training, validation or test data.
+    # Run format and split checks, set the role, and store the DataSet.
+    # Training data can be loaded only when dynamic_data is False.
+    # Return this experiment; loading alone does not train or score a model.
     def load_data(self, data, split="validation"):
         """Store explicitly supplied training, validation or test observations."""
         if split not in {"training", "validation", "test"}:
@@ -440,6 +513,13 @@ class generalNN:
             self.metadata["test_source"] = "Supplied by caller; known reuse rejected"
         return self
 
+    # Return one DataSet of size complete market scenarios for a given role.
+    # Use the custom generator when supplied; otherwise simulate each stock
+    # sequentially, select instrument quotes, and sum the call payments.
+    # The generator supplies the randomness; seed is the recorded seed label.
+    # Observed instruments require a custom generator or supplied data.
+    # SOURCE NOTE: the original docstring below has an extra closing quote.
+    # It is preserved exactly; it currently prevents the module from parsing.
     def _generate(self, size, generator, seed, role):
         """This function is responsible for creating a 'DataSet' of market paths. """"
         if self.data_generator is None and self.metadata.get("custom_generator_requires_reconnection"):
@@ -470,6 +550,10 @@ class generalNN:
                        stock_names=[stock.name for stock in self.settings.stocks],
                        metadata={"kind": "synthetic", "stocks_independent": True})
 
+    # Create missing validation data and, when requested, missing test data.
+    # In static mode, also create the fixed training pool if it is absent.
+    # Use the configured sizes and seeds; keep any already stored datasets.
+    # Return this experiment. This step prepares data but does not train.
     def prepare_data(self, include_test=True):
         """"Create the validation data, optionally create the test data, and create a fixed training dataset only when you are using static training. """
         torch.set_num_threads(self.settings.torch_threads)
@@ -485,6 +569,10 @@ class generalNN:
                     self.metadata["test_source"] = "Generated independently by this experiment"
         return self
 
+    # Supply the scenarios needed for one training or calibration batch.
+    # Dynamic mode generates size fresh scenarios. Static mode samples size
+    # rows with replacement from the stored training pool.
+    # Return (batch, indices); indices is None for dynamically generated data.
     def _batch(self, size, generator, seed, role):
         """Generates a batch. """
 
@@ -504,6 +592,12 @@ class generalNN:
             batch = pool.select(indices, role)
             return batch, indices
 
+    # Turn holdings (B, N, D) and supplied instrument paths into money.
+    # Apply contract multipliers, then sum price gains and asset cashflows.
+    # Charge proportional fees on opening and changing holdings, starting
+    # from zero holdings. No extra maturity liquidation fee is charged here.
+    # Return (losses, costs), each shaped (B,): loss = payoff - gains + costs.
+    # This calculation remains differentiable in holdings for training.
     def calculate_losses(self, data, holdings):
         """Generic self-financing accounting, using the supplied payoff vector."""
         multipliers = data.prices.new_tensor([item.multiplier for item in self.settings.instruments])
@@ -517,6 +611,10 @@ class generalNN:
         costs = (rates * quoted[:, :-1] * (holdings - previous).abs()).sum(dim=(1, 2))
         return data.payoffs - gains + costs, costs
 
+    # Evaluate a model on a DataSet without building a gradient graph.
+    # Temporarily use evaluation mode and process scenarios in batches.
+    # Return two concatenated (B,) tensors: terminal losses and trading costs.
+    # Restore the model's previous training/evaluation mode even on failure.
     @torch.no_grad()
     def _score(self, model, data, batch_size=2048):
         was_training = model.training
@@ -533,6 +631,10 @@ class generalNN:
             model.train(was_training)
         return torch.cat(losses), torch.cat(costs)
 
+    # Return holdings for the requested objective and replicate, without fitting.
+    # If no completed runs exist, use the initial network instead.
+    # Input: a checked DataSet. Output: holdings shaped (B, N, D).
+    # Temporarily use evaluation mode and then restore the original mode.
     @torch.no_grad()
     def predict(self, data, objective="CVaR", replicate=0):
         data = self._check_data(data)
@@ -544,11 +646,19 @@ class generalNN:
         finally:
             model.train(was_training)
 
+    # Recompute batch-normalization statistics from a calibration DataSet.
+    # Temporary hooks set each layer's mean and variance from its inputs.
+    # No weights or gradients are updated; no action is needed without
+    # batch-normalization layers. Remove hooks and restore the prior mode.
+    # This affects how the paper-style policy behaves during evaluation.
     @torch.no_grad()
     def _calibrate(self, model, data):
         layers = [layer for layer in model.modules() if isinstance(layer, nn.BatchNorm1d)]
         if not layers:
             return
+        # Before this batch-normalization layer runs, replace its running mean
+        # and variance with statistics of the supplied calibration inputs.
+        # Use the population variance (unbiased=False); no return value is needed.
         def update_statistics(layer, inputs):
             layer.running_mean.copy_(inputs[0].mean(dim=0))
             layer.running_var.copy_(inputs[0].var(dim=0, unbiased=False))
@@ -562,9 +672,17 @@ class generalNN:
                 hook.remove()
             model.train(was_training)
 
+    # Run one optimization stage: warm-up or an objective-specific continuation.
+    # Inputs specify the model, objective, random seed, update budget and rate.
+    # Keep one calibration sample, and train both policy weights and an
+    # auxiliary loss threshold using batches from the selected data mode.
+    # Score fixed validation data at checkpoints, including update zero.
+    # Restore the lowest-risk validation checkpoint and return its history,
+    # threshold and diagnostics. Also append batch records to the experiment.
     def _train_stage(self, model, objective, replicate, name, seed, updates, learning_rate, verbose):
         settings = self.settings
         generator = np.random.default_rng(seed)
+        # Keep one training-source sample for normalization and initial threshold setup.
         calibration, _ = self._batch(settings.normalization_size, generator, seed, "calibration")
         stage = f"{self.family}_{replicate}_{name}"
         self.data["calibration_" + stage] = calibration
@@ -579,6 +697,7 @@ class generalNN:
         clipped = 0
         start = time.perf_counter()
         for update in range(updates + 1):
+            # Measure fixed validation paths before the next update, including update 0.
             if update % settings.validation_interval == 0 or update == updates:
                 self._calibrate(model, calibration)
                 losses, _ = self._score(model, self.data["validation"])
@@ -586,6 +705,7 @@ class generalNN:
                 if not math.isfinite(value):
                     raise RuntimeError("Validation risk became nonfinite.")
                 history.append({"update": update, "risk": value, "elapsed_seconds": time.perf_counter() - start})
+                # Save a separate copy so later optimizer steps cannot overwrite this checkpoint.
                 if value < best_risk:
                     best_risk, best_update = value, update
                     best_state, best_threshold = copy.deepcopy(model.state_dict()), threshold.item()
@@ -593,6 +713,7 @@ class generalNN:
                     print(f"{stage}: update {update}, validation risk {value:.5f}", flush=True)
             if update == updates:
                 break
+            # Use only training data for this gradient update.
             batch, indices = self._batch(settings.batch_size, generator, seed, "training_batch")
             model.train()
             holdings = model(batch.stock_prices, batch.variances)
@@ -600,11 +721,14 @@ class generalNN:
             loss = training_objective(losses, objective, threshold, settings)
             if not torch.isfinite(loss):
                 raise RuntimeError("Training objective became nonfinite.")
+            # Differentiate terminal risk, limit the gradient norm, then take one Adam step.
+            # The norm cap changes the update, not the recorded financial losses.
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
             gradient = nn.utils.clip_grad_norm_(parameters, settings.gradient_limit, error_if_nonfinite=True)
             optimizer.step()
             clipped += int(gradient > settings.gradient_limit)
+            # Store the pre-update batch objective and diagnostics for this completed step.
             record = {"stage": stage, "objective": objective, "replicate": replicate, "seed": seed,
                       "update": update + 1, "mode": "dynamic" if self.dynamic_data else "static",
                       "paths": len(batch), "training_objective": loss.item(), "mean_loss": losses.mean().item(),
@@ -618,6 +742,7 @@ class generalNN:
                 if indices is not None:
                     record["pool_indices"] = indices.tolist()
             self.batch_records.append(record)
+        # Use the best validation checkpoint, not necessarily the last training update.
         model.load_state_dict(best_state)
         model.eval()
         return {"history": history, "best_update": best_update, "best_validation_risk": best_risk,
@@ -625,6 +750,12 @@ class generalNN:
                 "clipped_updates": clipped, "learning_rate": learning_rate, "training_seed": seed,
                 "batch_mode": "dynamic" if self.dynamic_data else "static"}
 
+    # Run the requested CVaR and/or Entropic fits for each configured replicate.
+    # First train a CVaR warm-up, then start each continuation from the same
+    # selected warm-up weights. Each stage has its own optimizer and threshold.
+    # Store selected policies and reports, and return this experiment.
+    # This starts a new experiment only; it rejects an object with saved runs.
+    # Test data are not used here. fit is an alias of this method below.
     def train(self, objectives=OBJECTIVES, verbose=False):
         if self.runs:
             raise RuntimeError("Create a new generalNN object to run another training experiment.")
@@ -636,9 +767,11 @@ class generalNN:
         for replicate in range(settings.number_of_replicates):
             model = self._make_network(replicate)
             seed = settings.training_seed + 100 * replicate
+            # All objective branches share this initial CVaR-trained policy.
             warmup = self._train_stage(model, "CVaR", replicate, "warmup", seed,
                                       settings.warmup_updates, settings.learning_rate, verbose)
             warm_state = copy.deepcopy(model.state_dict())
+            # Reset to the same warm-up weights before fitting each final objective.
             for objective in objectives:
                 model.load_state_dict(warm_state)
                 rate = settings.learning_rate if objective == "CVaR" else settings.entropic_learning_rate
@@ -650,11 +783,16 @@ class generalNN:
                                   "simulation_scheme": SIMULATION_SCHEME, "parameter_count": self.parameter_count,
                                   "warmup": warmup, **stage})
                 self.models[run_id] = copy.deepcopy(model)
+        # Expose the first selected policy here; models retains every objective/replicate.
         self.network = self.models[self.runs[0]["run_id"]]
         return self
 
     fit = train
 
+    # Measure existing policies on the stored validation set without fitting.
+    # Use selected policies when available, or the initial policy otherwise.
+    # Append metrics and per-path results to measurements; return a dictionary
+    # of metrics. This is an explicit check, not the training checkpoint loop.
     def validate(self):
         """Measure the current policies on stored validation data without fitting."""
         if "validation" not in self.data:
@@ -667,6 +805,11 @@ class generalNN:
         self.measurements.append({"split": "validation", "results": records})
         return {name: record["metrics"] for name, record in records.items()}
 
+    # Evaluate every selected policy on one common supplied DataSet.
+    # Replace current evaluation arrays; update each run's metrics and record
+    # the no-hedge baseline plus up to six example paths for the plots.
+    # Record scenario and instrument identifiers used for fair comparisons.
+    # Return this experiment. No training occurs and weights stay unchanged.
     def _evaluate_data(self, data):
         if not self.runs:
             raise RuntimeError("Train or load selected policies before evaluating them.")
@@ -694,6 +837,11 @@ class generalNN:
         }
         return self
 
+    # Evaluate selected policies and store results for the plotting functions.
+    # Input data, when supplied, becomes the checked test set; otherwise use
+    # or generate stored test data. include_delta adds the synthetic stock-delta
+    # benchmark. Historical result objects can only replay their stored data.
+    # Return this experiment; this method does not adjust model weights.
     def evaluate(self, data=None, include_delta=False):
         if self.metadata.get("evaluation_kind") == "historical":
             if data is not None or include_delta:
@@ -708,6 +856,12 @@ class generalNN:
             self._add_delta_benchmark(self.data["test"])
         return self
 
+    # Check the format and declared conventions of supplied historical data.
+    # Require source labels, raw per-unit prices, zero-interest accounting,
+    # terminal payoffs, ordered names and valid dates/feature timestamps.
+    # Reject declared timing violations and known split reuse; return the data.
+    # These checks validate supplied records, not the truth of a source label
+    # or whether a backtested order would really have filled.
     def _check_historical(self, data):
         if isinstance(data, dict) and data.get("metadata", {}).get("asset_cashflows") == "included" and "cashflows" not in data:
             raise ValueError("Supply the observed asset cashflows declared in the metadata.")
@@ -739,6 +893,11 @@ class generalNN:
         self._check_separation(data, "historical")
         return data
 
+    # Apply selected policies to checked historical observations, without fitting.
+    # Make a separate result object with copied reports and metadata; the
+    # trained models are shared, while evaluation arrays are newly calculated.
+    # Store that result under the requested name and return it.
+    # The parent's synthetic results stay intact; no missing prices are simulated.
     def evaluate_historical(self, data, name="Historical evaluation"):
         """Return a separate, plottable result using supplied historical payments.
 
@@ -759,18 +918,32 @@ class generalNN:
         self.historical_results[name] = result
         return result
 
+    # Find the report matching an objective name and replicate number.
+    # Return the existing report dictionary, or raise KeyError if it is absent.
+    # The loss/cost accessors and plotting functions use this lookup.
     def get_run(self, objective="CVaR", replicate=0):
         for report in self.runs:
             if report["objective"] == objective and report["replicate_id"] == replicate:
                 return report
         raise KeyError(f"No {objective} run with replicate {replicate}.")
 
+    # Return the stored per-scenario evaluation losses for one selected run.
+    # Use the run's loss_key; this reads results rather than recomputing them.
     def losses(self, objective="CVaR", replicate=0):
         return self.arrays[self.get_run(objective, replicate)["loss_key"]]
 
+    # Return the stored per-scenario trading costs for one selected run.
+    # This requires evaluation arrays from evaluate() or a saved experiment.
     def costs(self, objective="CVaR", replicate=0):
         return self.arrays["costs_" + self.get_run(objective, replicate)["run_id"]]
 
+    # Load the bundled benchmark format: summary.json, weights and arrays.npz.
+    # family selects ours, paper_full or paper_stock; paper/control are aliases.
+    # Create models with the CURRENT _TradingPolicy and load their saved weights.
+    # Load archived histories and result arrays without replaying or training.
+    # Return an experiment; full original datasets are not reconstructed here.
+    # Unchanged archived scores do not establish that edited forward code
+    # would reproduce those scores when the saved weights are used again.
     @classmethod
     def from_saved(cls, family="ours", folder=None):
         """Read the unchanged benchmark, without training or regenerating data."""
@@ -804,7 +977,15 @@ class generalNN:
             analytic_heston_call_price=summary["analytic_heston_call_price"])
         return result
 
+    # Collect this experiment into a dictionary that save() can write.
+    # Include configuration, model weights, retained datasets, reports and
+    # historical results; convert NumPy values into serializable forms.
+    # Do not store an Adam optimizer or the custom generator callable.
+    # Instead, record whether that generator must be reconnected after loading.
     def _snapshot(self):
+        # Recursively prepare a stored value for the snapshot dictionary.
+        # Convert NumPy arrays to tensor copies and NumPy scalars to Python values;
+        # process dictionaries and sequences, leaving other values unchanged.
         def encode(value):
             if isinstance(value, np.ndarray):
                 return torch.from_numpy(value.copy())
@@ -815,6 +996,7 @@ class generalNN:
             if isinstance(value, (list, tuple)):
                 return [encode(item) for item in value]
             return value
+        # Package data and selected weights; optimizer state is intentionally absent.
         payload = {name: encode(getattr(self, name)) for name in (
             "method", "name", "dynamic_data", "runs", "arrays", "benchmarks", "metadata", "batch_records", "measurements")}
         payload.update(format_version=1, settings=self.settings.to_dict(), network=self.network.state_dict(),
@@ -827,16 +1009,26 @@ class generalNN:
                                                   self.metadata.get("custom_generator_requires_reconnection", False)))
         return payload
 
+    # Create the requested directory and write the snapshot to experiment.pt.
+    # Return the directory path. An existing experiment.pt there is overwritten.
+    # This saves selected models/results, not a resumable optimizer state.
     def save(self, folder):
         folder = Path(folder)
         folder.mkdir(parents=True, exist_ok=True)
         torch.save(self._snapshot(), folder / "experiment.pt")
         return folder
 
+    # Rebuild an experiment from the snapshot dictionary produced above.
+    # Restore configuration, weights, retained data and nested historical results;
+    # put loaded policies in evaluation mode and flag missing custom generators.
+    # Return the restored object. No training or optimizer recovery occurs.
     @classmethod
     def _restore(cls, payload):
         if payload["format_version"] != 1:
             raise ValueError("Unsupported experiment format.")
+        # Recursively convert stored tensor data into NumPy arrays.
+        # Process dictionaries and lists; preserve other values as they are.
+        # Model state dictionaries are loaded separately, not decoded here.
         def decode(value):
             if isinstance(value, torch.Tensor):
                 return value.numpy()
@@ -845,6 +1037,7 @@ class generalNN:
             if isinstance(value, list):
                 return [decode(item) for item in value]
             return value
+        # Recreate the configured architecture before assigning the saved weights.
         result = cls(payload["method"], Settings.from_dict(payload["settings"]),
                      payload["dynamic_data"], name=payload["name"])
         for name in ("runs", "arrays", "benchmarks", "metadata", "batch_records", "measurements"):
@@ -856,6 +1049,7 @@ class generalNN:
             model.load_state_dict(payload["models"][report["run_id"]], strict=True)
             model.eval()
             result.models[report["run_id"]] = model
+        # Rebuild DataSet objects so their normal preparation runs again.
         result.data = {name: DataSet(**decode(data)) for name, data in payload["data"].items()}
         result.training_batches = {name: [DataSet(**decode(data)) for data in batches]
                                    for name, batches in payload["training_batches"].items()}
@@ -864,10 +1058,18 @@ class generalNN:
             result.metadata["custom_generator_requires_reconnection"] = True
         return result
 
+    # Read folder/experiment.pt onto the CPU, then rebuild it with _restore().
+    # Use this for snapshots from save(); use from_saved() for the bundled
+    # benchmark's different file format. Return the restored experiment.
     @classmethod
     def load(cls, folder):
         return cls._restore(torch.load(Path(folder) / "experiment.pt", map_location="cpu", weights_only=True))
 
+    # Calculate the synthetic Heston stock-delta hedge for each call liability.
+    # Require a tradable stock for each modeled stock, scale holdings by call
+    # quantity and instrument multiplier, and leave other instruments at zero.
+    # Evaluate with the same accounting and store the benchmark losses/metrics.
+    # This adds a stock-only benchmark, not a full two-instrument replication.
     def _add_delta_benchmark(self, data):
         if data.metadata.get("kind") == "historical":
             raise ValueError("The analytical Heston benchmark is for the synthetic model only.")
@@ -899,6 +1101,10 @@ SIMULATION_SCHEME = "exact_CIR_endpoints_mean_preserving_integral_stock_martinga
 SIMULATION_BACKEND = "numba" if njit is not None else "numpy"
 
 
+# Price a claim paying the accumulated variance at maturity, at zero interest.
+# Inputs: variance already accumulated, current variance, remaining time
+# and Heston parameters. Add expected remaining variance to the accumulation.
+# Return prices with NumPy broadcasting; this is not the raw variance state.
 def variance_claim_price(integrated_variance, variance, remaining_time, settings):
     """Conditional continuous-Heston price of the claim paying integrated variance."""
     loading = -np.expm1(-settings.mean_reversion * np.asarray(remaining_time)) / settings.mean_reversion
@@ -907,6 +1113,11 @@ def variance_claim_price(integrated_variance, variance, remaining_time, settings
             + settings.long_run_variance*np.asarray(remaining_time))
 
 
+# Precompute the coefficients needed for one small Heston simulation step.
+# Input: market parameters and the number of internal steps per trading day.
+# Compute exact CIR variance-transition coefficients and stock-mean correction
+# terms, using a series for small steps to avoid subtracting close numbers.
+# Check positivity conditions and return a dictionary reused by the simulator.
 def transition_parameters(settings):
     """Return the exact CIR transition and the two martingale-correction weights."""
     dt = settings.time_step/settings.simulation_substeps
@@ -944,6 +1155,12 @@ def transition_parameters(settings):
     }
 
 
+# Generate stock, variance and accumulated-variance paths for one chunk.
+# Inputs: path count, NumPy generator, initial states, grid and coefficients.
+# Sample exact CIR variance endpoints; approximate integrated variance with
+# weighted endpoints and use the stated mean-corrected stock update.
+# Return three float64 arrays (B, N + 1), recording only trading dates.
+# Extra internal substeps improve resolution; they are not extra trades.
 def _simulate_arrays(number_of_paths, generator, initial_price, initial_variance,
                      number_of_days, simulation_substeps, coefficients):
     (degrees, cir_scale, noncentrality_multiplier, old_weight, next_weight,
@@ -964,16 +1181,20 @@ def _simulate_arrays(number_of_paths, generator, initial_price, initial_variance
         for substep in range(simulation_substeps):
             for path in range(number_of_paths):
                 noncentrality = variance[path]*noncentrality_multiplier
+                # A scaled noncentral chi-square draw gives the next CIR variance endpoint.
                 next_variance[path] = cir_scale*generator.noncentral_chisquare(degrees, noncentrality)
+            # Approximate this substep's variance integral from its two endpoints.
             increment = old_weight*variance + next_weight*next_variance
             independent_variance = independent_fraction*increment
             log_mgf = mgf_constant + mgf_variance_coefficient*variance
             noise = generator.standard_normal(number_of_paths)
+            # Combine correlated variance effects, the mean correction and independent noise.
             log_return = (stock_exponent*next_variance - log_mgf - 0.5*independent_variance
                           + np.sqrt(independent_variance)*noise)
             stock *= np.exp(log_return)
             integrated_variance += increment
             variance, next_variance = next_variance, variance
+        # Record the state only after all internal substeps for this trading interval.
         stocks[:, day+1] = stock
         variances[:, day+1] = variance
         integrals[:, day+1] = integrated_variance
@@ -983,6 +1204,10 @@ def _simulate_arrays(number_of_paths, generator, initial_price, initial_variance
 _simulate_fast = njit(cache=True)(_simulate_arrays) if njit is not None else _simulate_arrays
 
 
+# Prepare the single-stock simulation coefficients in the required order.
+# Select the optional Numba-compiled loop or the ordinary Python loop.
+# Return stock, variance and integral arrays from that simulation chunk.
+# The supplied generator is advanced; no separate random seed is created.
 def _from_generator(number_of_paths, generator, settings, use_numba=True):
     simulator = _simulate_fast if use_numba else _simulate_arrays
     parameters = transition_parameters(settings)
@@ -994,6 +1219,10 @@ def _from_generator(number_of_paths, generator, settings, use_numba=True):
                      settings.number_of_days, settings.simulation_substeps, coefficients)
 
 
+# Convert simulated stock/variance states into two instrument-price series.
+# Compute the variance-claim prices and stack them after stock prices.
+# Return prices (B, N + 1, 2) and variances (B, N + 1); optionally append
+# a diagnostics dictionary containing integrals and simulator labels.
 def _package(stocks, variances, integrals, settings, return_diagnostics):
     remaining = (settings.number_of_days-np.arange(settings.number_of_days+1))*settings.time_step
     claim = variance_claim_price(integrals, variances, remaining, settings)
@@ -1008,6 +1237,12 @@ def _package(stocks, variances, integrals, settings, return_diagnostics):
     return prices, variances
 
 
+# Public single-stock Heston simulator used by the experiment generator.
+# Inputs: path count, an existing random generator and per-stock settings.
+# Process at most PATHS_PER_CHUNK paths per call to the simulation loop.
+# Return stock/variance-claim prices and variance states, plus optional
+# diagnostics. Keep the chunk size fixed when reproducing random draws.
+# Exact variance transitions do not make the joint stock simulation exact.
 def simulate_paths(number_of_paths, generator, settings, *, return_diagnostics=False, use_numba=True):
     """Return float64 NumPy asset prices (N, days+1, 2) and variances (N, days+1).
 
@@ -1029,17 +1264,29 @@ def simulate_paths(number_of_paths, generator, settings, *, return_diagnostics=F
     return _package(stocks, variances, integrals, settings, return_diagnostics)
 
 
+# Calculate empirical CVaR from a one-dimensional nonempty loss tensor.
+# Choose an empirical alpha-quantile and apply the positive-part formula.
+# This handles a fractional tail boundary without rounding the tail mass.
+# Return one risk tensor; alpha is expected to satisfy 0 <= alpha < 1.
 def cvar(losses, alpha=0.5):
     rank = max(1, math.ceil(alpha * len(losses)))
     threshold = losses.kthvalue(rank).values
     return threshold + torch.relu(losses - threshold).mean() / (1 - alpha)
 
 
+# Calculate log(mean(exp(risk_aversion * losses))) / risk_aversion.
+# Input: a nonempty (B,) loss tensor and positive risk aversion.
+# Use logsumexp for stable evaluation; return one risk tensor.
+# This is an empirical finite-sample score, not an existence test for
+# the population exponential moment.
 def entropic_risk(losses, risk_aversion=1.0):
     log_average = torch.logsumexp(risk_aversion * losses, dim=0) - math.log(len(losses))
     return log_average / risk_aversion
 
 
+# Choose the exact empirical validation/reporting risk by objective name.
+# Read alpha or risk_aversion from settings and return a scalar tensor.
+# Accept only CVaR or Entropic; no trainable threshold is used here.
 def risk_value(losses, objective, settings):
     if objective == "CVaR":
         return cvar(losses, settings.alpha)
@@ -1048,6 +1295,12 @@ def risk_value(losses, objective, settings):
     raise ValueError("Choose CVaR or Entropic.")
 
 
+# Build the differentiable batch objective used to update weights and w.
+# Inputs: terminal loss tensor, objective, trainable threshold w and settings.
+# CVaR uses w + mean(relu(loss - w)) / (1 - alpha).
+# Entropic uses a centered exponential expression whose minimum over w
+# equals empirical entropic risk for a fixed policy.
+# Return one scalar objective; a finite training run need not optimize w fully.
 def training_objective(losses, objective, threshold, settings):
     if objective == "CVaR":
         return threshold + torch.relu(losses - threshold).mean() / (1 - settings.alpha)
@@ -1057,6 +1310,11 @@ def training_objective(losses, objective, threshold, settings):
     raise ValueError("Choose CVaR or Entropic.")
 
 
+# Turn loss and cost vectors into ordinary numeric reporting statistics.
+# Return mean loss, both risks, mean cost, maximum loss and exponential
+# weight diagnostics. Larger-loss paths receive more exponential weight.
+# The effective-path statistic measures weight concentration, not the
+# number of statistically independent paths. No training happens here.
 def summarize(losses, costs, settings):
     weights = torch.softmax(settings.risk_aversion * losses, dim=0)
     return {
@@ -1074,6 +1332,10 @@ from scipy.fft import dst
 from scipy.integrate import quad
 
 
+# Evaluate the Heston characteristic function of the future log return.
+# Inputs: Fourier frequency (possibly complex), maturity, variance and
+# market parameters. Output: a complex value or array.
+# The pricing and delta helpers use this formula, not the neural networks.
 def _characteristic(frequency, maturity, variance, settings):
     """Characteristic function of log(S_T/S_t), with the stable Heston branch."""
     kappa = settings.mean_reversion
@@ -1092,6 +1354,10 @@ def _characteristic(frequency, maturity, variance, settings):
     return np.exp(constant + coefficient * variance)
 
 
+# Check the Heston parameter ranges supported by the pricing helpers.
+# Require positive mean reversion, long-run variance and volatility of
+# variance, plus correlation strictly between -1 and 1.
+# Raise ValueError on failure; return no value and change no settings.
 def _validate_parameters(settings):
     if min(settings.mean_reversion, settings.long_run_variance, settings.vol_of_vol) <= 0:
         raise ValueError("The Heston benchmark requires positive mean reversion, long-run variance, and vol of vol.")
@@ -1099,6 +1365,12 @@ def _validate_parameters(settings):
         raise ValueError("The Heston benchmark requires correlation strictly between -1 and 1.")
 
 
+# Compute a zero-interest European call price using Fourier integration.
+# Use configured spot, variance and maturity unless overrides are supplied.
+# Integrate two probabilities and combine them as spot * P1 - strike * P2.
+# Return a scalar price; reject invalid inputs or failed error tolerances.
+# No other function in this file calls call_price; it remains available
+# for an explicit pricing check and is preserved as supplied.
 def call_price(settings, *, spot=None, variance=None, maturity=None):
     """Return the zero-interest European call price from Fourier probabilities."""
     _validate_parameters(settings)
@@ -1111,6 +1383,9 @@ def call_price(settings, *, spot=None, variance=None, maturity=None):
     probabilities = []
 
     for shift in [1.0, 0.0]:
+        # Compute the Fourier integrand for the current probability shift.
+        # Use outer-scope moneyness, variance and maturity; return the real-valued
+        # imaginary-component expression divided by the integration frequency.
         def integrand(frequency):
             value = np.exp(1j * frequency * log_moneyness)
             value *= _characteristic(frequency - 1j*shift, maturity, variance, settings)
@@ -1123,6 +1398,12 @@ def call_price(settings, *, spot=None, variance=None, maturity=None):
     return spot * probabilities[0] - settings.strike * probabilities[1]
 
 
+# Build a stock-delta curve at one variance level and remaining maturity.
+# Choose a Fourier grid, form the stock-numeraire return distribution,
+# and convert its cumulative probabilities into call deltas.
+# Return log-moneyness nodes, delta values and numerical diagnostics.
+# Raise an error if the grid budget or probability checks fail; accepted
+# small probability deviations are clipped to the interval [0, 1].
 def _delta_curve(variance, maturity, settings, domain_factor, resolution):
     """Compute a dense delta curve in log-moneyness for one variance and date."""
     kappa = settings.mean_reversion
@@ -1142,12 +1423,14 @@ def _delta_curve(variance, maturity, settings, domain_factor, resolution):
     indices = np.arange(1, number)
     frequencies = indices * math.pi / (2 * half_width)
     # Under the stock numeraire, E[exp(i*u*log-return)] = phi(u-i).
+    # Use the tilted return distribution whose tail probability is the stock delta.
     tilted_characteristic = _characteristic(frequencies - 1j, maturity, variance, settings)
     cosine_coefficients = np.real(tilted_characteristic * np.exp(1j * frequencies * half_width))
     sine_coefficients = cosine_coefficients / (indices * math.pi)
     cdf = np.empty(number + 1)
     cdf[0], cdf[-1] = 0.0, 1.0
     cdf[1:-1] = indices / number + dst(sine_coefficients, type=1)
+    # Check that the computed cumulative distribution is nearly bounded and increasing.
     bound_error = max(0.0, -float(cdf.min()), float(cdf.max()) - 1.0)
     monotonicity_error = max(0.0, -float(np.diff(cdf).min()))
     if max(bound_error, monotonicity_error) > 1e-7:
@@ -1164,6 +1447,13 @@ def _delta_curve(variance, maturity, settings, domain_factor, resolution):
     return log_moneyness, delta, diagnostics
 
 
+# Compute a conventional Heston stock hedge along supplied market paths.
+# Inputs: stock/variance tensors (B, N + 1), settings and grid controls.
+# At each date, build only the variance-grid curves needed by these paths,
+# then interpolate in log-moneyness and between neighboring variance nodes.
+# Return (B, N) holdings on the price tensor's device and precision, plus
+# optional diagnostics. Fourier/interpolation calculations run in NumPy.
+# This does not train a network or trade the variance claim.
 def delta_holdings(prices, variances, settings, *, return_diagnostics=False,
                    variance_step=0.06, domain_factor=8.0, resolution=16.0):
     """Return Heston stock deltas at the daily trading dates.
@@ -1202,6 +1492,7 @@ def delta_holdings(prices, variances, settings, *, return_diagnostics=False,
         "remote_tail_interpolations": 0,
     }
 
+    # Recompute maturity and the required variance grid at each trading date.
     for day in range(settings.number_of_days):
         maturity = (settings.number_of_days - day) * settings.time_step
         log_moneyness = np.log(stock_array[:, day] / settings.strike)
@@ -1213,6 +1504,7 @@ def delta_holdings(prices, variances, settings, *, return_diagnostics=False,
         upper = lower + 1
         needed_nodes = np.unique(np.concatenate([lower, upper[fraction > 0]]))
 
+        # Compute each needed variance-node delta curve once for this date.
         for node in needed_nodes:
             grid_variance = scale * math.expm1(float(node) * variance_step)
             x_grid, delta_grid, information = _delta_curve(
@@ -1222,6 +1514,7 @@ def delta_holdings(prices, variances, settings, *, return_diagnostics=False,
             diagnostics["maximum_cdf_bound_error"] = max(diagnostics["maximum_cdf_bound_error"], information["cdf_bound_error"])
             diagnostics["maximum_cdf_monotonicity_error"] = max(diagnostics["maximum_cdf_monotonicity_error"], information["cdf_monotonicity_error"])
 
+            # Add each path's lower/upper variance-node contribution using linear interpolation.
             for mask, weight in [(lower == node, 1 - fraction), ((upper == node) & (fraction > 0), fraction)]:
                 queries = log_moneyness[mask]
                 interpolated = np.interp(queries, x_grid, delta_grid)
