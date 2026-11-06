@@ -6,11 +6,11 @@ Use explain=True for a separate interpretation below the figure, and
 save_dir="figures" to export 300-dpi PNGs and vector SVGs.
 No data, scores, model weights, or training settings are changed.
 
-All seven public plotting functions are retained:
-    plot_learning, plot_learning_simple, plot_losses, plot_risk,
+All eight public plotting functions are available:
+    plot_learning, plot_learning_simple, plot_losses, plot_pnl_histogram, plot_risk,
     plot_loss_tails, plot_paths, and show_published_figure.
 
-The first five accept objective="CVaR" or objective="Entropic".
+The first six accept objective="CVaR" or objective="Entropic".
 Omitting objective displays all common fitted objectives, except that
 plot_learning_simple defaults to a single CVaR run. Objective names are
 case-insensitive. Market paths and published figures do not depend on an
@@ -26,7 +26,7 @@ the file. Use print(plots.__file__) to check which file the notebook imports.
 """
 
 # Functions beginning with an underscore are helpers used by the plotting functions.
-# The seven functions near the end are the ones you normally call in a notebook.
+# The eight functions near the end are the ones you normally call in a notebook.
 # An experiment supplies stored data and training records; this file draws them.
 import io
 import json
@@ -430,6 +430,87 @@ def plot_losses(experiments, objective=None, replicate=None, *, bins=80,
     return output if not show else None
 
 
+# Compare final profits using side-by-side bars, as in the paper's histogram.
+def plot_pnl_histogram(experiments, objective=None, replicate=None, *, bins=40,
+                       premium=None, include_delta=True, dpi=DEFAULT_DPI,
+                       figsize=DEFAULT_SIZE, show=True, explain=False, save_dir=None):
+    """Draw side-by-side histograms of final profit = premium - stored loss.
+
+    Use one experiment or a list evaluated on common test paths. By default,
+    include the first experiment's stored Heston stock-delta benchmark:
+
+        ours.evaluate(include_delta=True)
+        plots.plot_pnl_histogram(ours, objective="CVaR")
+
+    Set include_delta=False to compare only neural policies. One common
+    premium shifts every series equally. For the built-in single-call
+    experiment it defaults to the Heston option price; other liabilities
+    require an explicit premium. No training or evaluation is performed.
+    """
+    experiments = _experiments(experiments)
+    reference = experiments[0]
+    objectives = _objectives(experiments, objective)
+
+    # Read the benchmark prepared by evaluate(include_delta=True).
+    delta_losses = None
+    if include_delta:
+        key = "benchmark_loss_stock_delta"
+        if key not in reference.arrays:
+            raise ValueError(
+                "First call evaluate(include_delta=True) on the first experiment, "
+                "or pass include_delta=False."
+            )
+        delta_losses = _array(reference.arrays[key])
+
+    # Use the same premium for every strategy, without centering them separately.
+    if premium is None:
+        if (reference.metadata.get("evaluation_kind") == "historical"
+                or reference.metadata.get("default_call_payoff") is False):
+            raise ValueError("Pass premium=... for this liability.")
+        premium = reference.metadata.get("analytic_heston_call_price")
+        if premium is None:
+            if not reference.metadata.get("default_call_payoff"):
+                raise ValueError("Pass premium=... for this liability.")
+            from scripts.general_nn import call_price
+            premium = call_price(reference.settings)
+    premium = float(premium)
+    if not np.isfinite(premium):
+        raise ValueError("premium must be a finite number.")
+
+    output = {}
+    for name in objectives:
+        labels = [_label(item, experiments) for item in experiments]
+        losses = [_array(item.losses(name, _replicate(item, replicate)))
+                  for item in experiments]
+        if delta_losses is not None:
+            labels.append("Heston stock-delta hedge")
+            losses.append(delta_losses)
+        if any(len(values) != len(losses[0]) for values in losses):
+            raise ValueError("Histogram comparisons require equal scenario counts.")
+
+        # Shared bins make each group of bars compare the same profit interval.
+        profits = [premium - values for values in losses]
+        edges = np.histogram_bin_edges(np.concatenate(profits), bins=bins)
+        figure, axis = _figure(
+            "What is the final hedging profit?\n" + _criterion(name, reference.settings),
+            "Final profit and loss (premium - loss)", "Number of scenarios", dpi, figsize,
+        )
+        axis.hist(profits, bins=edges, label=labels, alpha=0.6, rwidth=0.9)
+        explanation = (
+            f"Every strategy receives the same premium of {premium:.4f}. "
+            "Positive horizontal values mean profit; negative values mean loss. "
+            "Bar heights count scenarios in shared bins, including all observed extremes. "
+            "Trading costs are already included in each stored loss."
+        )
+        if delta_losses is not None:
+            explanation += " The Heston stock-delta benchmark trades only the stock."
+        output[name] = _finish(
+            figure, axis, _filename("pnl_histogram", experiments, name),
+            explanation, show, explain, save_dir,
+        )
+    return output if not show else None
+
+
 # Compare saved test-risk scores across experiments and repeated training runs.
 # Choose objective="CVaR" or "Entropic"; None makes a separate figure for each
 # objective shared by all experiments. Lower risk is better.
@@ -750,3 +831,4 @@ def show_published_figure(number, *, dpi=DEFAULT_DPI, figsize=(10, 6),
         show, explain, None,
     )
     return {"published": pair} if not show else None
+
