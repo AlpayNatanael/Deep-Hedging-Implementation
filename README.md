@@ -4,7 +4,7 @@
 
 Our current experiments compare neural-network designs trained on fixed datasets or fresh simulated batches in Heston markets. Strategies trade stock alone or stock together with variance claims and are evaluated using CVaR, entropic risk, and profit-and-loss distributions. The implementation builds on [*Deep Hedging* by Buehler et al.](https://arxiv.org/abs/1802.03042).
 
-**Preliminary results.** In our initial single-call experiment, our network achieves lower test CVaR than our paper-style implementation, both with stock-only trading and when both networks can trade a variance claim. These results are preliminary, with network design and training-data mode varied together.
+**Preliminary results.** In our initial single-call experiment, our network achieves lower test CVaR than our paper-style implementation, both with stock-only trading and when both networks can trade a variance claim. These results are preliminary, with network design and training-data mode varied together. However when we consider larger training data size the performance converge to be the similar.
 
 ## Experiments
 
