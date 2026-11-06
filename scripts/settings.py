@@ -7,6 +7,7 @@ import math
 
 FAMILIES = {
     "ours": "Our network: stock only",
+    "ours_full": "Our network: stock + variance",
     "paper_full": "Paper style: stock + variance",
     "paper_stock": "Paper style: stock only",
 }
