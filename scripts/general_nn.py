@@ -521,7 +521,7 @@ class generalNN:
     # SOURCE NOTE: the original docstring below has an extra closing quote.
     # It is preserved exactly; it currently prevents the module from parsing.
     def _generate(self, size, generator, seed, role):
-        """This function is responsible for creating a 'DataSet' of market paths. """"
+        """This function is responsible for creating a 'DataSet' of market paths. """
         if self.data_generator is None and self.metadata.get("custom_generator_requires_reconnection"):
             raise ValueError("Reconnect the saved experiment's custom data_generator before generating more data.")
         if self.data_generator is not None:
