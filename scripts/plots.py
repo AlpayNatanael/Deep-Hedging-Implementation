@@ -834,11 +834,37 @@ def show_published_figure(number, *, dpi=DEFAULT_DPI, figsize=(10, 6),
     return {"published": pair} if not show else None
 
 
+def _heston_series(models):
+    """Read the first experiment's stored, comparable Heston benchmark."""
+    reference = models[0]
+    metadata = reference.metadata.get("heston_benchmark")
+    if metadata is None or "benchmark_loss_heston" not in reference.arrays:
+        raise ValueError("Run evaluate(include_heston=True) on the first experiment.")
+    if metadata["test_data_id"] != reference.metadata.get("test_data_id"):
+        raise ValueError("Recompute the Heston benchmark on the current test set.")
+
+    # A stock-only network needs a stock-only benchmark. A network that can
+    # trade the variance claim needs the corresponding two-instrument hedge.
+    for model in models:
+        instruments = sorted([
+            (item.name, item.kind, item.stock_index, item.multiplier,
+             model.settings.cost_rate if item.cost_rate is None else item.cost_rate)
+            for item in model.settings.instruments if item.tradable
+        ])
+        if instruments != metadata["instruments"]:
+            raise ValueError("Compare models with the same enabled trading instruments.")
+    return metadata["label"], _array(reference.arrays["benchmark_loss_heston"])
+
+
 def plot_pnl_comparison(
     experiments, *, premium, title="Terminal P&L", objective="CVaR",
-    replicate=0, bin_width=0.25, zoom=(-3, 3),
+    replicate=0, bin_width=0.25, zoom=(-3, 3), include_heston=False,
 ):
-    """Plot stored policy P&Ls: full range on the left, central zoom on the right."""
+    """Compare stored P&Ls, optionally including the classical Heston hedge.
+
+    Use the same premium for every strategy. The right panel only zooms the
+    horizontal axis: no observations are removed from the histogram counts.
+    """
     models = _experiments(experiments)
     if objective is None:
         raise ValueError("Choose CVaR or Entropic.")
@@ -854,6 +880,17 @@ def plot_pnl_comparison(
         premium - _array(m.losses(objective, replicate=replicate))
         for m in models
     ]
+    labels = [
+        m.name + "\n" + ("fresh batches" if m.dynamic_data else "fixed pool")
+        for m in models
+    ]
+
+    # The model hedge is calculated during evaluation, never inside a plot.
+    # Its holdings do not depend on the neural network's training objective.
+    if include_heston:
+        label, losses = _heston_series(models)
+        profits.append(premium - losses)
+        labels.append(label + "\nmodel based; no training")
     if len({len(values) for values in profits}) != 1:
         raise ValueError("Compare equal numbers of test scenarios.")
 
@@ -863,10 +900,6 @@ def plot_pnl_comparison(
     high = max(low + 1, np.ceil(all_values.max() / bin_width))
     bins = bin_width * np.arange(low, high + 1)
 
-    labels = [
-        m.name + "\n" + ("fresh batches" if m.dynamic_data else "fixed pool")
-        for m in models
-    ]
     figure, axes = plt.subplots(1, 2, figsize=(12, 5), sharey=True, dpi=200)
 
     for axis in axes:
@@ -879,7 +912,8 @@ def plot_pnl_comparison(
     axes[0].set_ylabel("Number of scenarios")
     axes[1].set_xlim(*zoom)
     axes[1].set_title(f"Central view only: [{zoom[0]:g}, {zoom[1]:g}]")
-    figure.suptitle(title + ": " + _criterion(objective, models[0].settings))
+    figure.suptitle(title + "\nNeural training objective: "
+                   + _criterion(objective, models[0].settings))
 
     handles, _ = axes[0].get_legend_handles_labels()
     figure.legend(handles, labels, loc="lower center", ncol=2, fontsize=9)
@@ -887,4 +921,5 @@ def plot_pnl_comparison(
     plt.show()
     plt.close(figure)
     return figure, axes
+
 
