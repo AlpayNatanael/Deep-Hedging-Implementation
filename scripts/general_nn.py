@@ -23,19 +23,42 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 @dataclass
-class DataSet:
+class DataSet: # Stores market scenarios, instrument prices, and the payments we owe.
     """Prices are raw per-unit quotes; payoffs are terminal currency payments."""
+    # Raw price per unit of each trading instrument: (B, N + 1, D).
     prices: torch.Tensor
+
+    # Underlying stock prices used as network inputs: (B, N + 1, M).
     stock_prices: torch.Tensor
+
+    # Variance of each stock used as a network input: (B, N + 1, M).
     variances: torch.Tensor
+
+    # Total liability payment owed at maturity in each scenario: (B,).
     payoffs: torch.Tensor
+
+    # Optional payments per instrument unit during each interval: (B, N, D).
     cashflows: torch.Tensor | None = None
+
+    # Recorded random seed associated with generating these data, if known.
     seed: int | None = None
+
+    # Purpose of these data, such as "training", "validation", or "test".
     role: str = "training"
+
+    # Observation timestamps for every scenario: (B, N + 1).
     dates: object = None
+
+    # Latest input-availability timestamp for each trading decision: (B, N).
     feature_times: object = None
+
+    # Instrument names, ordered to match the last dimension of prices.
     instrument_names: object = None
+
+    # Stock names, ordered to match stock_prices and variances.
     stock_names: object = None
+
+    # Extra information, such as data sources and accounting conventions.
     metadata: dict = field(default_factory=dict)
 
     def __post_init__(self):
@@ -75,6 +98,7 @@ class DataSet:
         return len(self.prices)
 
     def select(self, indices, role="training_batch"):
+        """ selects entire scenarios, preserving all dates and instruments belonging to those scenarios."""
         values = {name: getattr(self, name)[indices]
                   for name in ("prices", "stock_prices", "variances", "payoffs", "cashflows")}
         for name in ("dates", "feature_times"):
@@ -85,6 +109,7 @@ class DataSet:
                        metadata=copy.deepcopy(self.metadata))
 
     def fingerprint(self, scenarios_only=False):
+        """creates an identifier based on the contents"""
         names = ("stock_prices", "variances", "payoffs") if scenarios_only else (
             "prices", "stock_prices", "variances", "payoffs", "cashflows")
         digest = hashlib.sha256()
@@ -97,7 +122,7 @@ class DataSet:
         return digest.hexdigest()
 
 
-class _TradingPolicy(nn.Module):
+class _TradingPolicy(nn.Module): #main thing to read to understand what the NN sees.
     """Independent daily networks, with previous holdings fed to the next day."""
     def __init__(self, settings, method):
         super().__init__()
