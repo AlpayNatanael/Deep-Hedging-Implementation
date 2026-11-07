@@ -24,6 +24,7 @@ These findings support **memory-efficient training with comparable observed hedg
 |---|---|
 | [Single_Call_Comparison.ipynb](https://github.com/AlpayNatanael/Deep-Hedging-Implementation/blob/main/Single_Call_Comparison.ipynb) | Hedge one call using stock alone or stock plus a variance claim. Compare neural strategies with classical Heston hedges. |
 | [Large_Portfoloio_Comparison.ipynb](https://github.com/AlpayNatanael/Deep-Hedging-Implementation/blob/main/Large_Portfoloio_Comparison.ipynb) | Hedge three calls on three simulated stocks. Compare fixed-data and fresh-batch training with the same network architecture. |
+| [Large_Portfolio_Memory_Comparison.ipynb](https://github.com/AlpayNatanael/Deep-Hedging-Implementation/blob/main/Large_Portfolio_Memory_Comparison.ipynb) | Run the same portfolio experiment in separate processes and compare peak RAM, runtime, and test risk. |
 
 For a guided walkthrough, see [Single_Call_Comparison_Explained.ipynb](https://github.com/AlpayNatanael/Deep-Hedging-Implementation/blob/main/Single_Call_Comparison_Explained.ipynb).
 
@@ -43,3 +44,4 @@ Open a comparison notebook and run its cells in order. Training cells fit new mo
 - `scripts/general_nn.py`: simulation, networks, training, and evaluation.
 - `scripts/settings.py`: market, network, and experiment settings.
 - `scripts/plots.py`: learning curves, risk comparisons, and P&L plots.
+- `scripts/memory_tracker.py`: RAM tracking and isolated memory comparisons.

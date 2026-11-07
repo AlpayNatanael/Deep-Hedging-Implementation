@@ -1,0 +1,523 @@
+{
+  "name": "Fixed training pool",
+  "method": "paper",
+  "dynamic_data": false,
+  "memory": {
+    "baseline_mib": 356.40234375,
+    "peak_mib": 2522.91015625,
+    "peak_extra_mib": 2166.5078125,
+    "seconds": 216.36312445099975
+  },
+  "sampling_interval_seconds": 0.01,
+  "parameter_count": 64980,
+  "dataset_bytes": {
+    "training": 1159725056,
+    "validation": 9060352,
+    "calibration_paper_full_0_warmup": 9060352,
+    "calibration_paper_full_0_CVaR": 9060352,
+    "calibration_paper_full_0_Entropic": 9060352,
+    "test": 36241408
+  },
+  "retained_dataset_mib": 1175.125,
+  "test_risk": {
+    "CVaR": {
+      "mean": 8.698863651601721,
+      "runs": [
+        8.698863651601721
+      ]
+    },
+    "Entropic": {
+      "mean": 18.553288764818557,
+      "runs": [
+        18.553288764818557
+      ]
+    }
+  },
+  "runs": [
+    {
+      "run_id": "paper_full_CVaR_0",
+      "loss_key": "loss_paper_full_CVaR_0",
+      "family": "paper_full",
+      "objective": "CVaR",
+      "replicate_id": 0,
+      "simulation_scheme": "exact_CIR_endpoints_mean_preserving_integral_stock_martingale_correction",
+      "parameter_count": 64980,
+      "warmup": {
+        "history": [
+          {
+            "update": 0,
+            "risk": 17.916008868346445,
+            "elapsed_seconds": 0.15123194899933878
+          },
+          {
+            "update": 50,
+            "risk": 11.536004543646097,
+            "elapsed_seconds": 1.9358094119997986
+          },
+          {
+            "update": 100,
+            "risk": 10.383303531858166,
+            "elapsed_seconds": 3.6754163059995335
+          }
+        ],
+        "best_update": 100,
+        "best_validation_risk": 10.383303531858166,
+        "threshold": 8.693727053866564,
+        "seconds": 3.689791758002684,
+        "clipped_updates": 26,
+        "learning_rate": 0.005,
+        "training_seed": 10100,
+        "batch_mode": "static"
+      },
+      "history": [
+        {
+          "update": 0,
+          "risk": 10.396394275778022,
+          "elapsed_seconds": 0.1346947900019586
+        },
+        {
+          "update": 50,
+          "risk": 9.994376923492107,
+          "elapsed_seconds": 1.9672306160027802
+        },
+        {
+          "update": 100,
+          "risk": 9.823745003131975,
+          "elapsed_seconds": 3.746174591000454
+        },
+        {
+          "update": 150,
+          "risk": 9.571798139664608,
+          "elapsed_seconds": 5.5254513710024185
+        },
+        {
+          "update": 200,
+          "risk": 9.57659002557066,
+          "elapsed_seconds": 7.306280991000676
+        },
+        {
+          "update": 250,
+          "risk": 9.358045671470013,
+          "elapsed_seconds": 8.940041248002672
+        },
+        {
+          "update": 300,
+          "risk": 9.295102679720227,
+          "elapsed_seconds": 10.63585854500343
+        },
+        {
+          "update": 350,
+          "risk": 9.20301660492475,
+          "elapsed_seconds": 12.408073532002163
+        },
+        {
+          "update": 400,
+          "risk": 9.127408891038037,
+          "elapsed_seconds": 14.256469536001532
+        },
+        {
+          "update": 450,
+          "risk": 9.084027349225671,
+          "elapsed_seconds": 15.897827565000625
+        },
+        {
+          "update": 500,
+          "risk": 9.004072274304502,
+          "elapsed_seconds": 17.637763657003234
+        },
+        {
+          "update": 550,
+          "risk": 9.050021246821421,
+          "elapsed_seconds": 19.465732039003342
+        },
+        {
+          "update": 600,
+          "risk": 8.940757950952817,
+          "elapsed_seconds": 21.195784145002108
+        },
+        {
+          "update": 650,
+          "risk": 8.89874452006246,
+          "elapsed_seconds": 22.948627821002447
+        },
+        {
+          "update": 700,
+          "risk": 8.893794499644255,
+          "elapsed_seconds": 24.67371745499986
+        },
+        {
+          "update": 750,
+          "risk": 8.873451651060627,
+          "elapsed_seconds": 26.504798613001185
+        },
+        {
+          "update": 800,
+          "risk": 8.746430642454431,
+          "elapsed_seconds": 28.222463119000167
+        },
+        {
+          "update": 850,
+          "risk": 8.79245908333856,
+          "elapsed_seconds": 29.95274477100247
+        },
+        {
+          "update": 900,
+          "risk": 8.797565794947886,
+          "elapsed_seconds": 31.69521355100005
+        },
+        {
+          "update": 950,
+          "risk": 8.74113200605295,
+          "elapsed_seconds": 33.47068275000129
+        },
+        {
+          "update": 1000,
+          "risk": 8.727954331941833,
+          "elapsed_seconds": 35.196494974003144
+        }
+      ],
+      "best_update": 1000,
+      "best_validation_risk": 8.727954331941833,
+      "threshold": 7.1977588902228185,
+      "seconds": 35.213326580000285,
+      "clipped_updates": 1,
+      "learning_rate": 0.005,
+      "training_seed": 10101,
+      "batch_mode": "static",
+      "metrics": {
+        "mean_loss": 7.32990675271307,
+        "cvar": 8.698863651601721,
+        "entropic": 15.128157860469646,
+        "mean_cost": 0.673652362034369,
+        "max_loss": 23.67921149473296,
+        "entropic_effective_paths": 2.0002600102056958,
+        "entropic_max_weight": 0.6313722125978805
+      },
+      "diagnostics": {
+        "all_losses_finite": true,
+        "batch_normalization_frozen_for_test": true
+      }
+    },
+    {
+      "run_id": "paper_full_Entropic_0",
+      "loss_key": "loss_paper_full_Entropic_0",
+      "family": "paper_full",
+      "objective": "Entropic",
+      "replicate_id": 0,
+      "simulation_scheme": "exact_CIR_endpoints_mean_preserving_integral_stock_martingale_correction",
+      "parameter_count": 64980,
+      "warmup": {
+        "history": [
+          {
+            "update": 0,
+            "risk": 17.916008868346445,
+            "elapsed_seconds": 0.15123194899933878
+          },
+          {
+            "update": 50,
+            "risk": 11.536004543646097,
+            "elapsed_seconds": 1.9358094119997986
+          },
+          {
+            "update": 100,
+            "risk": 10.383303531858166,
+            "elapsed_seconds": 3.6754163059995335
+          }
+        ],
+        "best_update": 100,
+        "best_validation_risk": 10.383303531858166,
+        "threshold": 8.693727053866564,
+        "seconds": 3.689791758002684,
+        "clipped_updates": 26,
+        "learning_rate": 0.005,
+        "training_seed": 10100,
+        "batch_mode": "static"
+      },
+      "history": [
+        {
+          "update": 0,
+          "risk": 28.220554510699785,
+          "elapsed_seconds": 0.1405116959977022
+        },
+        {
+          "update": 50,
+          "risk": 24.669300514316028,
+          "elapsed_seconds": 1.874217843000224
+        },
+        {
+          "update": 100,
+          "risk": 20.806257092758976,
+          "elapsed_seconds": 3.6271698249984183
+        },
+        {
+          "update": 150,
+          "risk": 19.988696481607032,
+          "elapsed_seconds": 5.30050626999946
+        },
+        {
+          "update": 200,
+          "risk": 23.00711020312522,
+          "elapsed_seconds": 7.047937124996679
+        },
+        {
+          "update": 250,
+          "risk": 23.976383578644008,
+          "elapsed_seconds": 8.675726762998238
+        },
+        {
+          "update": 300,
+          "risk": 22.581777632948064,
+          "elapsed_seconds": 10.416557300999557
+        },
+        {
+          "update": 350,
+          "risk": 21.878151927798655,
+          "elapsed_seconds": 12.148273029997654
+        },
+        {
+          "update": 400,
+          "risk": 22.31641342685611,
+          "elapsed_seconds": 14.02538001299763
+        },
+        {
+          "update": 450,
+          "risk": 19.587186039087328,
+          "elapsed_seconds": 15.791704349998327
+        },
+        {
+          "update": 500,
+          "risk": 19.843147958731162,
+          "elapsed_seconds": 17.59512889100006
+        },
+        {
+          "update": 550,
+          "risk": 18.39338949924059,
+          "elapsed_seconds": 19.302057007000258
+        },
+        {
+          "update": 600,
+          "risk": 16.546743880516363,
+          "elapsed_seconds": 21.117627140996774
+        },
+        {
+          "update": 650,
+          "risk": 17.02559194003923,
+          "elapsed_seconds": 22.84269022999797
+        },
+        {
+          "update": 700,
+          "risk": 16.79011626072983,
+          "elapsed_seconds": 24.609005831000104
+        },
+        {
+          "update": 750,
+          "risk": 15.64497178710425,
+          "elapsed_seconds": 26.368555863999063
+        },
+        {
+          "update": 800,
+          "risk": 15.086299800632705,
+          "elapsed_seconds": 28.234874693000165
+        },
+        {
+          "update": 850,
+          "risk": 14.214431492564273,
+          "elapsed_seconds": 29.95565474799878
+        },
+        {
+          "update": 900,
+          "risk": 14.692266939921986,
+          "elapsed_seconds": 31.722231405998173
+        },
+        {
+          "update": 950,
+          "risk": 13.970724492631664,
+          "elapsed_seconds": 33.40163301299981
+        },
+        {
+          "update": 1000,
+          "risk": 16.479136278304374,
+          "elapsed_seconds": 35.178417941999214
+        }
+      ],
+      "best_update": 950,
+      "best_validation_risk": 13.970724492631664,
+      "threshold": 17.25329877455249,
+      "seconds": 35.18336505699699,
+      "clipped_updates": 147,
+      "learning_rate": 0.0005,
+      "training_seed": 10101,
+      "batch_mode": "static",
+      "metrics": {
+        "mean_loss": 7.808021350509275,
+        "cvar": 10.259269562741213,
+        "entropic": 18.553288764818557,
+        "mean_cost": 1.1186686552375193,
+        "max_loss": 27.529030045210284,
+        "entropic_effective_paths": 1.0724171081300475,
+        "entropic_max_weight": 0.9654392818325066
+      },
+      "diagnostics": {
+        "all_losses_finite": true,
+        "batch_normalization_frozen_for_test": true
+      }
+    }
+  ],
+  "test_data_id": "a00794d16c350a14eef8c687e9997b98ac12a8037729e44806a646876afed0f9",
+  "instrument_data_ids": {
+    "Stock1": "182f8c551d8fb3f7d34f4fd20dd15d2fff3b54a50e13eb97e6154318caaf778e",
+    "Stock1 variance": "eaf480ef4b88e1c780c86d4f9eb97df8910534370e5d0a498c2bdcd99a65697f",
+    "Stock2": "cf6fb4f2c9be07dd451097290e3ec17efa9f140b1887720aa4f88ebcfc8d3875",
+    "Stock2 variance": "a03a0dc9c3ea34bbd769c641e4dbc7f1e049a13483350a44df1cf23f03e09106",
+    "Stock3": "3642288e35b69efc86980fa4ed7d6eecd481db5b805010c041b8854c9ba280fa",
+    "Stock3 variance": "f7dac3744613cff3537d3a004802b838735bcc8df2635f69cc7b845993bd448c"
+  },
+  "comparison_signature": "b6536a827fc9b43b3256b4ac127132d800e773306e965d3fbbae71e69bd23d1e",
+  "source_hashes": {
+    "scripts/general_nn.py": "37bb2cf9be078cce22fc941c9a8ac07b7cbb890240b284c1871ed524b8cfdaeb",
+    "scripts/settings.py": "7731c3ecf702da7095e769e6dec38275f792001b5054f7d76809bb923aa89f74",
+    "scripts/memory_tracker.py": "ce52f695d1288110e5d2b7cc16bd118b713bbe3be336084256da2aae64bccec0"
+  },
+  "settings": {
+    "initial_price": 100.0,
+    "strike": 100.0,
+    "initial_variance": 0.04,
+    "long_run_variance": 0.04,
+    "mean_reversion": 1.0,
+    "vol_of_vol": 2.0,
+    "correlation": -0.7,
+    "number_of_days": 30,
+    "time_step": 0.0027397260273972603,
+    "simulation_substeps": 64,
+    "cost_rate": 0.001,
+    "variance_notional": 1000.0,
+    "alpha": 0.5,
+    "risk_aversion": 1.0,
+    "warmup_updates": 100,
+    "continuation_updates": 1000,
+    "learning_rate": 0.005,
+    "entropic_learning_rate": 0.0005,
+    "gradient_limit": 10.0,
+    "batchnorm_epsilon": 0.001,
+    "batchnorm_momentum": 0.01,
+    "normalization_size": 2048,
+    "batch_size": 256,
+    "validation_size": 2048,
+    "test_size": 8192,
+    "validation_interval": 50,
+    "number_of_replicates": 1,
+    "display_replicate": 0,
+    "initialization_seed": 7000,
+    "training_seed": 10100,
+    "validation_seed": 20200,
+    "test_seed": 40400,
+    "torch_threads": 1,
+    "static_training_size": 262144,
+    "retain_training_batches": false,
+    "network": {
+      "hidden_sizes": [
+        36,
+        36
+      ],
+      "activation": "tanh",
+      "batch_normalization": true
+    },
+    "stocks": [
+      {
+        "name": "Stock1",
+        "initial_price": 100.0,
+        "strike": 100.0,
+        "initial_variance": 0.04,
+        "long_run_variance": 0.04,
+        "mean_reversion": 1.0,
+        "vol_of_vol": 2.0,
+        "correlation": -0.7,
+        "call_quantity": 1.0
+      },
+      {
+        "name": "Stock2",
+        "initial_price": 50.0,
+        "strike": 50.0,
+        "initial_variance": 0.02,
+        "long_run_variance": 0.02,
+        "mean_reversion": 1.2,
+        "vol_of_vol": 1.8,
+        "correlation": -0.6,
+        "call_quantity": 1.0
+      },
+      {
+        "name": "Stock3",
+        "initial_price": 200.0,
+        "strike": 200.0,
+        "initial_variance": 0.06,
+        "long_run_variance": 0.06,
+        "mean_reversion": 0.8,
+        "vol_of_vol": 2.2,
+        "correlation": -0.5,
+        "call_quantity": 1.0
+      }
+    ],
+    "instruments": [
+      {
+        "name": "Stock1",
+        "kind": "stock",
+        "stock_index": 0,
+        "multiplier": 1.0,
+        "tradable": true,
+        "cost_rate": null
+      },
+      {
+        "name": "Stock1 variance",
+        "kind": "variance",
+        "stock_index": 0,
+        "multiplier": 1000.0,
+        "tradable": true,
+        "cost_rate": null
+      },
+      {
+        "name": "Stock2",
+        "kind": "stock",
+        "stock_index": 1,
+        "multiplier": 1.0,
+        "tradable": true,
+        "cost_rate": null
+      },
+      {
+        "name": "Stock2 variance",
+        "kind": "variance",
+        "stock_index": 1,
+        "multiplier": 1000.0,
+        "tradable": true,
+        "cost_rate": null
+      },
+      {
+        "name": "Stock3",
+        "kind": "stock",
+        "stock_index": 2,
+        "multiplier": 1.0,
+        "tradable": true,
+        "cost_rate": null
+      },
+      {
+        "name": "Stock3 variance",
+        "kind": "variance",
+        "stock_index": 2,
+        "multiplier": 1000.0,
+        "tradable": true,
+        "cost_rate": null
+      }
+    ],
+    "trade_variance": true,
+    "method": "paper_full"
+  },
+  "raw_training_batches_retained": 0,
+  "versions": {
+    "python": "3.12.14",
+    "torch": "2.5.1+cpu",
+    "numpy": "2.3.5",
+    "psutil": "7.2.2",
+    "platform": "linux",
+    "simulation_backend": "numba"
+  },
+  "measurement_scope": "Sampled RSS of one isolated CPU training process during data preparation, training and test evaluation; notebook and monitor processes excluded. Simulator compilation is warmed before timing. No GPU memory measured."
+}

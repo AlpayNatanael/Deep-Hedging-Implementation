@@ -1,0 +1,522 @@
+{
+  "name": "Fresh training batches",
+  "method": "ours",
+  "dynamic_data": true,
+  "memory": {
+    "baseline_mib": 356.55078125,
+    "peak_mib": 551.515625,
+    "peak_extra_mib": 194.96484375,
+    "seconds": 368.79315097299695
+  },
+  "sampling_interval_seconds": 0.01,
+  "parameter_count": 64980,
+  "dataset_bytes": {
+    "validation": 9060352,
+    "calibration_ours_0_warmup": 9060352,
+    "calibration_ours_0_CVaR": 9060352,
+    "calibration_ours_0_Entropic": 9060352,
+    "test": 36241408
+  },
+  "retained_dataset_mib": 69.125,
+  "test_risk": {
+    "CVaR": {
+      "mean": 8.730990776967815,
+      "runs": [
+        8.730990776967815
+      ]
+    },
+    "Entropic": {
+      "mean": 17.328467377078788,
+      "runs": [
+        17.328467377078788
+      ]
+    }
+  },
+  "runs": [
+    {
+      "run_id": "ours_CVaR_0",
+      "loss_key": "loss_ours_CVaR_0",
+      "family": "ours",
+      "objective": "CVaR",
+      "replicate_id": 0,
+      "simulation_scheme": "exact_CIR_endpoints_mean_preserving_integral_stock_martingale_correction",
+      "parameter_count": 64980,
+      "warmup": {
+        "history": [
+          {
+            "update": 0,
+            "risk": 17.959611319483436,
+            "elapsed_seconds": 0.15584911100086174
+          },
+          {
+            "update": 50,
+            "risk": 11.883607150573356,
+            "elapsed_seconds": 8.857572287000949
+          },
+          {
+            "update": 100,
+            "risk": 10.5286061084141,
+            "elapsed_seconds": 17.371082683999703
+          }
+        ],
+        "best_update": 100,
+        "best_validation_risk": 10.5286061084141,
+        "threshold": 8.894174646529766,
+        "seconds": 17.386191497000254,
+        "clipped_updates": 21,
+        "learning_rate": 0.005,
+        "training_seed": 10100,
+        "batch_mode": "dynamic"
+      },
+      "history": [
+        {
+          "update": 0,
+          "risk": 10.531483074576519,
+          "elapsed_seconds": 0.143222615999548
+        },
+        {
+          "update": 50,
+          "risk": 10.291383665236335,
+          "elapsed_seconds": 8.513079035001283
+        },
+        {
+          "update": 100,
+          "risk": 9.832709057995023,
+          "elapsed_seconds": 17.09493669999938
+        },
+        {
+          "update": 150,
+          "risk": 9.541999570016301,
+          "elapsed_seconds": 25.42657427800077
+        },
+        {
+          "update": 200,
+          "risk": 9.499941018860348,
+          "elapsed_seconds": 33.661971678000555
+        },
+        {
+          "update": 250,
+          "risk": 9.373052759128361,
+          "elapsed_seconds": 41.85476007499892
+        },
+        {
+          "update": 300,
+          "risk": 9.25752903628478,
+          "elapsed_seconds": 50.19355995600199
+        },
+        {
+          "update": 350,
+          "risk": 9.201520255177831,
+          "elapsed_seconds": 58.36296316199878
+        },
+        {
+          "update": 400,
+          "risk": 9.236928986003024,
+          "elapsed_seconds": 66.47872758800077
+        },
+        {
+          "update": 450,
+          "risk": 9.129380648977358,
+          "elapsed_seconds": 74.81694255099865
+        },
+        {
+          "update": 500,
+          "risk": 9.07089050283497,
+          "elapsed_seconds": 83.26281596999979
+        },
+        {
+          "update": 550,
+          "risk": 8.944352228540346,
+          "elapsed_seconds": 91.52039426299962
+        },
+        {
+          "update": 600,
+          "risk": 8.944069718349391,
+          "elapsed_seconds": 99.82523053800105
+        },
+        {
+          "update": 650,
+          "risk": 8.952255684930542,
+          "elapsed_seconds": 108.39318677100164
+        },
+        {
+          "update": 700,
+          "risk": 8.846438899450089,
+          "elapsed_seconds": 116.79540469600033
+        },
+        {
+          "update": 750,
+          "risk": 8.8859501595604,
+          "elapsed_seconds": 125.43828459100041
+        },
+        {
+          "update": 800,
+          "risk": 8.87104788741369,
+          "elapsed_seconds": 133.78747705500064
+        },
+        {
+          "update": 850,
+          "risk": 8.854594054566007,
+          "elapsed_seconds": 142.3130976800021
+        },
+        {
+          "update": 900,
+          "risk": 8.793636442750518,
+          "elapsed_seconds": 150.48242324799867
+        },
+        {
+          "update": 950,
+          "risk": 8.69205490135877,
+          "elapsed_seconds": 158.85676423400218
+        },
+        {
+          "update": 1000,
+          "risk": 8.751961652754035,
+          "elapsed_seconds": 166.9316186670003
+        }
+      ],
+      "best_update": 950,
+      "best_validation_risk": 8.69205490135877,
+      "threshold": 7.255702993045753,
+      "seconds": 166.9373216560016,
+      "clipped_updates": 0,
+      "learning_rate": 0.005,
+      "training_seed": 10101,
+      "batch_mode": "dynamic",
+      "metrics": {
+        "mean_loss": 7.375048189239805,
+        "cvar": 8.730990776967815,
+        "entropic": 14.031732520755476,
+        "mean_cost": 0.6816040781884671,
+        "max_loss": 22.843647469206417,
+        "entropic_effective_paths": 1.4605227225718416,
+        "entropic_max_weight": 0.819551205574033
+      },
+      "diagnostics": {
+        "all_losses_finite": true,
+        "batch_normalization_frozen_for_test": true
+      }
+    },
+    {
+      "run_id": "ours_Entropic_0",
+      "loss_key": "loss_ours_Entropic_0",
+      "family": "ours",
+      "objective": "Entropic",
+      "replicate_id": 0,
+      "simulation_scheme": "exact_CIR_endpoints_mean_preserving_integral_stock_martingale_correction",
+      "parameter_count": 64980,
+      "warmup": {
+        "history": [
+          {
+            "update": 0,
+            "risk": 17.959611319483436,
+            "elapsed_seconds": 0.15584911100086174
+          },
+          {
+            "update": 50,
+            "risk": 11.883607150573356,
+            "elapsed_seconds": 8.857572287000949
+          },
+          {
+            "update": 100,
+            "risk": 10.5286061084141,
+            "elapsed_seconds": 17.371082683999703
+          }
+        ],
+        "best_update": 100,
+        "best_validation_risk": 10.5286061084141,
+        "threshold": 8.894174646529766,
+        "seconds": 17.386191497000254,
+        "clipped_updates": 21,
+        "learning_rate": 0.005,
+        "training_seed": 10100,
+        "batch_mode": "dynamic"
+      },
+      "history": [
+        {
+          "update": 0,
+          "risk": 22.35586509791592,
+          "elapsed_seconds": 0.14164254999923287
+        },
+        {
+          "update": 50,
+          "risk": 22.352721226165393,
+          "elapsed_seconds": 8.820863959001144
+        },
+        {
+          "update": 100,
+          "risk": 20.520006062609752,
+          "elapsed_seconds": 17.356346300999576
+        },
+        {
+          "update": 150,
+          "risk": 20.085630405063647,
+          "elapsed_seconds": 25.879021448999993
+        },
+        {
+          "update": 200,
+          "risk": 18.97304134490501,
+          "elapsed_seconds": 34.29636322299848
+        },
+        {
+          "update": 250,
+          "risk": 18.625741445204326,
+          "elapsed_seconds": 42.75562496699786
+        },
+        {
+          "update": 300,
+          "risk": 16.42495768001878,
+          "elapsed_seconds": 51.54389456900026
+        },
+        {
+          "update": 350,
+          "risk": 17.988202367542083,
+          "elapsed_seconds": 61.36187229699863
+        },
+        {
+          "update": 400,
+          "risk": 17.76882730966304,
+          "elapsed_seconds": 70.0747366430005
+        },
+        {
+          "update": 450,
+          "risk": 20.48454766669522,
+          "elapsed_seconds": 78.67843734100097
+        },
+        {
+          "update": 500,
+          "risk": 18.982992326411736,
+          "elapsed_seconds": 87.25406646699776
+        },
+        {
+          "update": 550,
+          "risk": 20.604402902841013,
+          "elapsed_seconds": 96.98787514599826
+        },
+        {
+          "update": 600,
+          "risk": 18.60299952819352,
+          "elapsed_seconds": 105.61757683700125
+        },
+        {
+          "update": 650,
+          "risk": 17.00687351990784,
+          "elapsed_seconds": 114.55908431200078
+        },
+        {
+          "update": 700,
+          "risk": 16.287434510145303,
+          "elapsed_seconds": 122.95710909400077
+        },
+        {
+          "update": 750,
+          "risk": 17.392861838941084,
+          "elapsed_seconds": 131.34867047100124
+        },
+        {
+          "update": 800,
+          "risk": 17.611079924010966,
+          "elapsed_seconds": 139.87287871199806
+        },
+        {
+          "update": 850,
+          "risk": 18.015003483758072,
+          "elapsed_seconds": 148.53417315099796
+        },
+        {
+          "update": 900,
+          "risk": 15.877952877966266,
+          "elapsed_seconds": 157.0870110520009
+        },
+        {
+          "update": 950,
+          "risk": 15.708274357518444,
+          "elapsed_seconds": 165.60138972999994
+        },
+        {
+          "update": 1000,
+          "risk": 16.15578823774895,
+          "elapsed_seconds": 174.18200934199922
+        }
+      ],
+      "best_update": 950,
+      "best_validation_risk": 15.708274357518444,
+      "threshold": 19.05466298567992,
+      "seconds": 174.18808763199922,
+      "clipped_updates": 118,
+      "learning_rate": 0.0005,
+      "training_seed": 10101,
+      "batch_mode": "dynamic",
+      "metrics": {
+        "mean_loss": 7.930129612551573,
+        "cvar": 10.7408959898401,
+        "entropic": 17.328467377078788,
+        "mean_cost": 1.2232455728597817,
+        "max_loss": 26.216231699943492,
+        "entropic_effective_paths": 1.267985911206253,
+        "entropic_max_weight": 0.8841318955046674
+      },
+      "diagnostics": {
+        "all_losses_finite": true,
+        "batch_normalization_frozen_for_test": true
+      }
+    }
+  ],
+  "test_data_id": "a00794d16c350a14eef8c687e9997b98ac12a8037729e44806a646876afed0f9",
+  "instrument_data_ids": {
+    "Stock1": "182f8c551d8fb3f7d34f4fd20dd15d2fff3b54a50e13eb97e6154318caaf778e",
+    "Stock1 variance": "eaf480ef4b88e1c780c86d4f9eb97df8910534370e5d0a498c2bdcd99a65697f",
+    "Stock2": "cf6fb4f2c9be07dd451097290e3ec17efa9f140b1887720aa4f88ebcfc8d3875",
+    "Stock2 variance": "a03a0dc9c3ea34bbd769c641e4dbc7f1e049a13483350a44df1cf23f03e09106",
+    "Stock3": "3642288e35b69efc86980fa4ed7d6eecd481db5b805010c041b8854c9ba280fa",
+    "Stock3 variance": "f7dac3744613cff3537d3a004802b838735bcc8df2635f69cc7b845993bd448c"
+  },
+  "comparison_signature": "b6536a827fc9b43b3256b4ac127132d800e773306e965d3fbbae71e69bd23d1e",
+  "source_hashes": {
+    "scripts/general_nn.py": "37bb2cf9be078cce22fc941c9a8ac07b7cbb890240b284c1871ed524b8cfdaeb",
+    "scripts/settings.py": "7731c3ecf702da7095e769e6dec38275f792001b5054f7d76809bb923aa89f74",
+    "scripts/memory_tracker.py": "ce52f695d1288110e5d2b7cc16bd118b713bbe3be336084256da2aae64bccec0"
+  },
+  "settings": {
+    "initial_price": 100.0,
+    "strike": 100.0,
+    "initial_variance": 0.04,
+    "long_run_variance": 0.04,
+    "mean_reversion": 1.0,
+    "vol_of_vol": 2.0,
+    "correlation": -0.7,
+    "number_of_days": 30,
+    "time_step": 0.0027397260273972603,
+    "simulation_substeps": 64,
+    "cost_rate": 0.001,
+    "variance_notional": 1000.0,
+    "alpha": 0.5,
+    "risk_aversion": 1.0,
+    "warmup_updates": 100,
+    "continuation_updates": 1000,
+    "learning_rate": 0.005,
+    "entropic_learning_rate": 0.0005,
+    "gradient_limit": 10.0,
+    "batchnorm_epsilon": 0.001,
+    "batchnorm_momentum": 0.01,
+    "normalization_size": 2048,
+    "batch_size": 256,
+    "validation_size": 2048,
+    "test_size": 8192,
+    "validation_interval": 50,
+    "number_of_replicates": 1,
+    "display_replicate": 0,
+    "initialization_seed": 7000,
+    "training_seed": 10100,
+    "validation_seed": 20200,
+    "test_seed": 40400,
+    "torch_threads": 1,
+    "static_training_size": 262144,
+    "retain_training_batches": false,
+    "network": {
+      "hidden_sizes": [
+        36,
+        36
+      ],
+      "activation": "tanh",
+      "batch_normalization": true
+    },
+    "stocks": [
+      {
+        "name": "Stock1",
+        "initial_price": 100.0,
+        "strike": 100.0,
+        "initial_variance": 0.04,
+        "long_run_variance": 0.04,
+        "mean_reversion": 1.0,
+        "vol_of_vol": 2.0,
+        "correlation": -0.7,
+        "call_quantity": 1.0
+      },
+      {
+        "name": "Stock2",
+        "initial_price": 50.0,
+        "strike": 50.0,
+        "initial_variance": 0.02,
+        "long_run_variance": 0.02,
+        "mean_reversion": 1.2,
+        "vol_of_vol": 1.8,
+        "correlation": -0.6,
+        "call_quantity": 1.0
+      },
+      {
+        "name": "Stock3",
+        "initial_price": 200.0,
+        "strike": 200.0,
+        "initial_variance": 0.06,
+        "long_run_variance": 0.06,
+        "mean_reversion": 0.8,
+        "vol_of_vol": 2.2,
+        "correlation": -0.5,
+        "call_quantity": 1.0
+      }
+    ],
+    "instruments": [
+      {
+        "name": "Stock1",
+        "kind": "stock",
+        "stock_index": 0,
+        "multiplier": 1.0,
+        "tradable": true,
+        "cost_rate": null
+      },
+      {
+        "name": "Stock1 variance",
+        "kind": "variance",
+        "stock_index": 0,
+        "multiplier": 1000.0,
+        "tradable": true,
+        "cost_rate": null
+      },
+      {
+        "name": "Stock2",
+        "kind": "stock",
+        "stock_index": 1,
+        "multiplier": 1.0,
+        "tradable": true,
+        "cost_rate": null
+      },
+      {
+        "name": "Stock2 variance",
+        "kind": "variance",
+        "stock_index": 1,
+        "multiplier": 1000.0,
+        "tradable": true,
+        "cost_rate": null
+      },
+      {
+        "name": "Stock3",
+        "kind": "stock",
+        "stock_index": 2,
+        "multiplier": 1.0,
+        "tradable": true,
+        "cost_rate": null
+      },
+      {
+        "name": "Stock3 variance",
+        "kind": "variance",
+        "stock_index": 2,
+        "multiplier": 1000.0,
+        "tradable": true,
+        "cost_rate": null
+      }
+    ],
+    "trade_variance": true,
+    "method": "ours"
+  },
+  "raw_training_batches_retained": 0,
+  "versions": {
+    "python": "3.12.14",
+    "torch": "2.5.1+cpu",
+    "numpy": "2.3.5",
+    "psutil": "7.2.2",
+    "platform": "linux",
+    "simulation_backend": "numba"
+  },
+  "measurement_scope": "Sampled RSS of one isolated CPU training process during data preparation, training and test evaluation; notebook and monitor processes excluded. Simulator compilation is warmed before timing. No GPU memory measured."
+}
