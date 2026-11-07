@@ -1,0 +1,7 @@
+ours_0_warmup: update 0, validation risk 17.95961
+ours_0_warmup: update 100, validation risk 10.52861
+ours_0_CVaR: update 0, validation risk 10.53148
+ours_0_CVaR: update 500, validation risk 9.07089
+ours_0_Entropic: update 0, validation risk 22.35587
+ours_0_Entropic: update 500, validation risk 18.98299
+Our network: stock + variance: baseline 293.5 MiB | sampled peak 506.0 MiB | peak increase 212.4 MiB | 170.9 s

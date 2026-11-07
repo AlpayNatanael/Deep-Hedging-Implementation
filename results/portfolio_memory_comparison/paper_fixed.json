@@ -1,35 +1,38 @@
 {
-  "name": "Fixed training pool",
+  "name": "Paper network: stock + variance",
   "method": "paper",
   "dynamic_data": false,
+  "data_generator": "Regular",
+  "fast_workers": 6,
+  "fast_prefetch": 2,
   "memory": {
-    "baseline_mib": 356.40234375,
-    "peak_mib": 2522.91015625,
-    "peak_extra_mib": 2166.5078125,
-    "seconds": 216.36312445099975
+    "baseline_mib": 289.6171875,
+    "peak_mib": 1399.1328125,
+    "peak_extra_mib": 1109.515625,
+    "seconds": 97.04037080000853
   },
   "sampling_interval_seconds": 0.01,
   "parameter_count": 64980,
   "dataset_bytes": {
-    "training": 1159725056,
+    "training": 579862528,
     "validation": 9060352,
     "calibration_paper_full_0_warmup": 9060352,
     "calibration_paper_full_0_CVaR": 9060352,
     "calibration_paper_full_0_Entropic": 9060352,
     "test": 36241408
   },
-  "retained_dataset_mib": 1175.125,
+  "retained_dataset_mib": 622.125,
   "test_risk": {
     "CVaR": {
-      "mean": 8.698863651601721,
+      "mean": 9.09460044440456,
       "runs": [
-        8.698863651601721
+        9.09460044440456
       ]
     },
     "Entropic": {
-      "mean": 18.553288764818557,
+      "mean": 29.532719936885012,
       "runs": [
-        18.553288764818557
+        29.532719936885012
       ]
     }
   },
@@ -46,25 +49,25 @@
         "history": [
           {
             "update": 0,
-            "risk": 17.916008868346445,
-            "elapsed_seconds": 0.15123194899933878
+            "risk": 17.946726304238673,
+            "elapsed_seconds": 0.12442309997277334
           },
           {
             "update": 50,
-            "risk": 11.536004543646097,
-            "elapsed_seconds": 1.9358094119997986
+            "risk": 11.787520747396634,
+            "elapsed_seconds": 1.5375402999925427
           },
           {
             "update": 100,
-            "risk": 10.383303531858166,
-            "elapsed_seconds": 3.6754163059995335
+            "risk": 10.605190561501384,
+            "elapsed_seconds": 2.9199279999593273
           }
         ],
         "best_update": 100,
-        "best_validation_risk": 10.383303531858166,
-        "threshold": 8.693727053866564,
-        "seconds": 3.689791758002684,
-        "clipped_updates": 26,
+        "best_validation_risk": 10.605190561501384,
+        "threshold": 9.15183159618909,
+        "seconds": 2.9324995999922976,
+        "clipped_updates": 21,
         "learning_rate": 0.005,
         "training_seed": 10100,
         "batch_mode": "static"
@@ -72,126 +75,76 @@
       "history": [
         {
           "update": 0,
-          "risk": 10.396394275778022,
-          "elapsed_seconds": 0.1346947900019586
+          "risk": 10.606478438168306,
+          "elapsed_seconds": 0.13069229997927323
         },
         {
           "update": 50,
-          "risk": 9.994376923492107,
-          "elapsed_seconds": 1.9672306160027802
+          "risk": 10.29462842603602,
+          "elapsed_seconds": 1.5127115999930538
         },
         {
           "update": 100,
-          "risk": 9.823745003131975,
-          "elapsed_seconds": 3.746174591000454
+          "risk": 9.94683122150644,
+          "elapsed_seconds": 2.898648399976082
         },
         {
           "update": 150,
-          "risk": 9.571798139664608,
-          "elapsed_seconds": 5.5254513710024185
+          "risk": 9.557036827667702,
+          "elapsed_seconds": 4.296468999993522
         },
         {
           "update": 200,
-          "risk": 9.57659002557066,
-          "elapsed_seconds": 7.306280991000676
+          "risk": 9.481781370764592,
+          "elapsed_seconds": 5.707980399951339
         },
         {
           "update": 250,
-          "risk": 9.358045671470013,
-          "elapsed_seconds": 8.940041248002672
+          "risk": 9.35692757046599,
+          "elapsed_seconds": 7.091196299996227
         },
         {
           "update": 300,
-          "risk": 9.295102679720227,
-          "elapsed_seconds": 10.63585854500343
+          "risk": 9.204119988233577,
+          "elapsed_seconds": 8.492081099946517
         },
         {
           "update": 350,
-          "risk": 9.20301660492475,
-          "elapsed_seconds": 12.408073532002163
+          "risk": 9.233862653504167,
+          "elapsed_seconds": 9.882788999995682
         },
         {
           "update": 400,
-          "risk": 9.127408891038037,
-          "elapsed_seconds": 14.256469536001532
+          "risk": 9.269533498758642,
+          "elapsed_seconds": 11.266859499970451
         },
         {
           "update": 450,
-          "risk": 9.084027349225671,
-          "elapsed_seconds": 15.897827565000625
+          "risk": 9.179856714224522,
+          "elapsed_seconds": 12.646853699989151
         },
         {
           "update": 500,
-          "risk": 9.004072274304502,
-          "elapsed_seconds": 17.637763657003234
-        },
-        {
-          "update": 550,
-          "risk": 9.050021246821421,
-          "elapsed_seconds": 19.465732039003342
-        },
-        {
-          "update": 600,
-          "risk": 8.940757950952817,
-          "elapsed_seconds": 21.195784145002108
-        },
-        {
-          "update": 650,
-          "risk": 8.89874452006246,
-          "elapsed_seconds": 22.948627821002447
-        },
-        {
-          "update": 700,
-          "risk": 8.893794499644255,
-          "elapsed_seconds": 24.67371745499986
-        },
-        {
-          "update": 750,
-          "risk": 8.873451651060627,
-          "elapsed_seconds": 26.504798613001185
-        },
-        {
-          "update": 800,
-          "risk": 8.746430642454431,
-          "elapsed_seconds": 28.222463119000167
-        },
-        {
-          "update": 850,
-          "risk": 8.79245908333856,
-          "elapsed_seconds": 29.95274477100247
-        },
-        {
-          "update": 900,
-          "risk": 8.797565794947886,
-          "elapsed_seconds": 31.69521355100005
-        },
-        {
-          "update": 950,
-          "risk": 8.74113200605295,
-          "elapsed_seconds": 33.47068275000129
-        },
-        {
-          "update": 1000,
-          "risk": 8.727954331941833,
-          "elapsed_seconds": 35.196494974003144
+          "risk": 9.074013487518489,
+          "elapsed_seconds": 14.051236099970993
         }
       ],
-      "best_update": 1000,
-      "best_validation_risk": 8.727954331941833,
-      "threshold": 7.1977588902228185,
-      "seconds": 35.213326580000285,
-      "clipped_updates": 1,
+      "best_update": 500,
+      "best_validation_risk": 9.074013487518489,
+      "threshold": 7.276996862732167,
+      "seconds": 14.060773499950301,
+      "clipped_updates": 0,
       "learning_rate": 0.005,
       "training_seed": 10101,
       "batch_mode": "static",
       "metrics": {
-        "mean_loss": 7.32990675271307,
-        "cvar": 8.698863651601721,
-        "entropic": 15.128157860469646,
-        "mean_cost": 0.673652362034369,
-        "max_loss": 23.67921149473296,
-        "entropic_effective_paths": 2.0002600102056958,
-        "entropic_max_weight": 0.6313722125978805
+        "mean_loss": 7.473643459619258,
+        "cvar": 9.09460044440456,
+        "entropic": 15.95187220032825,
+        "mean_cost": 0.8081959774256211,
+        "max_loss": 24.578376328106817,
+        "entropic_effective_paths": 2.040254839577312,
+        "entropic_max_weight": 0.6808527519405503
       },
       "diagnostics": {
         "all_losses_finite": true,
@@ -210,25 +163,25 @@
         "history": [
           {
             "update": 0,
-            "risk": 17.916008868346445,
-            "elapsed_seconds": 0.15123194899933878
+            "risk": 17.946726304238673,
+            "elapsed_seconds": 0.12442309997277334
           },
           {
             "update": 50,
-            "risk": 11.536004543646097,
-            "elapsed_seconds": 1.9358094119997986
+            "risk": 11.787520747396634,
+            "elapsed_seconds": 1.5375402999925427
           },
           {
             "update": 100,
-            "risk": 10.383303531858166,
-            "elapsed_seconds": 3.6754163059995335
+            "risk": 10.605190561501384,
+            "elapsed_seconds": 2.9199279999593273
           }
         ],
         "best_update": 100,
-        "best_validation_risk": 10.383303531858166,
-        "threshold": 8.693727053866564,
-        "seconds": 3.689791758002684,
-        "clipped_updates": 26,
+        "best_validation_risk": 10.605190561501384,
+        "threshold": 9.15183159618909,
+        "seconds": 2.9324995999922976,
+        "clipped_updates": 21,
         "learning_rate": 0.005,
         "training_seed": 10100,
         "batch_mode": "static"
@@ -236,126 +189,76 @@
       "history": [
         {
           "update": 0,
-          "risk": 28.220554510699785,
-          "elapsed_seconds": 0.1405116959977022
+          "risk": 17.4204079173358,
+          "elapsed_seconds": 0.11917029996402562
         },
         {
           "update": 50,
-          "risk": 24.669300514316028,
-          "elapsed_seconds": 1.874217843000224
+          "risk": 18.010734444618656,
+          "elapsed_seconds": 1.5545011999784037
         },
         {
           "update": 100,
-          "risk": 20.806257092758976,
-          "elapsed_seconds": 3.6271698249984183
+          "risk": 17.886450671259748,
+          "elapsed_seconds": 2.949257000000216
         },
         {
           "update": 150,
-          "risk": 19.988696481607032,
-          "elapsed_seconds": 5.30050626999946
+          "risk": 18.516449786326866,
+          "elapsed_seconds": 4.345124899991788
         },
         {
           "update": 200,
-          "risk": 23.00711020312522,
-          "elapsed_seconds": 7.047937124996679
+          "risk": 19.088583951039976,
+          "elapsed_seconds": 5.744723199983127
         },
         {
           "update": 250,
-          "risk": 23.976383578644008,
-          "elapsed_seconds": 8.675726762998238
+          "risk": 18.998262985209735,
+          "elapsed_seconds": 7.158182099985424
         },
         {
           "update": 300,
-          "risk": 22.581777632948064,
-          "elapsed_seconds": 10.416557300999557
+          "risk": 18.752496453897542,
+          "elapsed_seconds": 8.575851399975363
         },
         {
           "update": 350,
-          "risk": 21.878151927798655,
-          "elapsed_seconds": 12.148273029997654
+          "risk": 19.928962011428986,
+          "elapsed_seconds": 9.945936299976893
         },
         {
           "update": 400,
-          "risk": 22.31641342685611,
-          "elapsed_seconds": 14.02538001299763
+          "risk": 20.382680022638635,
+          "elapsed_seconds": 11.318784699949902
         },
         {
           "update": 450,
-          "risk": 19.587186039087328,
-          "elapsed_seconds": 15.791704349998327
+          "risk": 21.834542932388008,
+          "elapsed_seconds": 12.718087599962018
         },
         {
           "update": 500,
-          "risk": 19.843147958731162,
-          "elapsed_seconds": 17.59512889100006
-        },
-        {
-          "update": 550,
-          "risk": 18.39338949924059,
-          "elapsed_seconds": 19.302057007000258
-        },
-        {
-          "update": 600,
-          "risk": 16.546743880516363,
-          "elapsed_seconds": 21.117627140996774
-        },
-        {
-          "update": 650,
-          "risk": 17.02559194003923,
-          "elapsed_seconds": 22.84269022999797
-        },
-        {
-          "update": 700,
-          "risk": 16.79011626072983,
-          "elapsed_seconds": 24.609005831000104
-        },
-        {
-          "update": 750,
-          "risk": 15.64497178710425,
-          "elapsed_seconds": 26.368555863999063
-        },
-        {
-          "update": 800,
-          "risk": 15.086299800632705,
-          "elapsed_seconds": 28.234874693000165
-        },
-        {
-          "update": 850,
-          "risk": 14.214431492564273,
-          "elapsed_seconds": 29.95565474799878
-        },
-        {
-          "update": 900,
-          "risk": 14.692266939921986,
-          "elapsed_seconds": 31.722231405998173
-        },
-        {
-          "update": 950,
-          "risk": 13.970724492631664,
-          "elapsed_seconds": 33.40163301299981
-        },
-        {
-          "update": 1000,
-          "risk": 16.479136278304374,
-          "elapsed_seconds": 35.178417941999214
+          "risk": 20.687001698657323,
+          "elapsed_seconds": 14.116502099961508
         }
       ],
-      "best_update": 950,
-      "best_validation_risk": 13.970724492631664,
-      "threshold": 17.25329877455249,
-      "seconds": 35.18336505699699,
-      "clipped_updates": 147,
+      "best_update": 0,
+      "best_validation_risk": 17.4204079173358,
+      "threshold": 23.909276734621344,
+      "seconds": 14.11968279996654,
+      "clipped_updates": 44,
       "learning_rate": 0.0005,
       "training_seed": 10101,
       "batch_mode": "static",
       "metrics": {
-        "mean_loss": 7.808021350509275,
-        "cvar": 10.259269562741213,
-        "entropic": 18.553288764818557,
-        "mean_cost": 1.1186686552375193,
-        "max_loss": 27.529030045210284,
-        "entropic_effective_paths": 1.0724171081300475,
-        "entropic_max_weight": 0.9654392818325066
+        "mean_loss": 7.978395125976732,
+        "cvar": 10.618889095194913,
+        "entropic": 29.532719936885012,
+        "mean_cost": 1.2698139517710512,
+        "max_loss": 38.18547161423291,
+        "entropic_effective_paths": 1.8735467019271381,
+        "entropic_max_weight": 0.6989600650458531
       },
       "diagnostics": {
         "all_losses_finite": true,
@@ -363,20 +266,21 @@
       }
     }
   ],
-  "test_data_id": "a00794d16c350a14eef8c687e9997b98ac12a8037729e44806a646876afed0f9",
+  "test_data_id": "0f96b175bce004429ae118cb79751b4e4e09ac2a8aa4add79fc1687c04c9b674",
   "instrument_data_ids": {
-    "Stock1": "182f8c551d8fb3f7d34f4fd20dd15d2fff3b54a50e13eb97e6154318caaf778e",
-    "Stock1 variance": "eaf480ef4b88e1c780c86d4f9eb97df8910534370e5d0a498c2bdcd99a65697f",
-    "Stock2": "cf6fb4f2c9be07dd451097290e3ec17efa9f140b1887720aa4f88ebcfc8d3875",
-    "Stock2 variance": "a03a0dc9c3ea34bbd769c641e4dbc7f1e049a13483350a44df1cf23f03e09106",
-    "Stock3": "3642288e35b69efc86980fa4ed7d6eecd481db5b805010c041b8854c9ba280fa",
-    "Stock3 variance": "f7dac3744613cff3537d3a004802b838735bcc8df2635f69cc7b845993bd448c"
+    "Stock1": "d6b7381f83fd62dca8ce1fc69da290032e78195d481ad625e017223190583f07",
+    "Stock1 variance": "a5fcef77d1dfe570d7bd77228a9c018d99f138fb0fd8331ee5daec34d513ca63",
+    "Stock2": "c308b9a479d84f24404b3586a5b37a2844084262eb6b6b4d7d4f2b94c61f0b7a",
+    "Stock2 variance": "41e81cf7682d19059bf17bcb7f3d8cc445c00f69ae2d0bb65706c5952a735da4",
+    "Stock3": "fb0e8996f65e027ed0b2f106890e6d61428adb22d08480208efaef8e64059bcf",
+    "Stock3 variance": "8c2a365418d277dbea6ffe1a580cd943c0812125242fe4833d607cf003de1c4e"
   },
-  "comparison_signature": "b6536a827fc9b43b3256b4ac127132d800e773306e965d3fbbae71e69bd23d1e",
+  "comparison_signature": "1e288eef89cf24e7ef7380d1b8b0918ccaa7a14bb16e7d050e1c90a03612938d",
   "source_hashes": {
-    "scripts/general_nn.py": "37bb2cf9be078cce22fc941c9a8ac07b7cbb890240b284c1871ed524b8cfdaeb",
-    "scripts/settings.py": "7731c3ecf702da7095e769e6dec38275f792001b5054f7d76809bb923aa89f74",
-    "scripts/memory_tracker.py": "ce52f695d1288110e5d2b7cc16bd118b713bbe3be336084256da2aae64bccec0"
+    "scripts/general_nn.py": "439c9cec8f44cdb9a70d3e350c77b5138d7a5838135e7d35549186c4a8237db4",
+    "scripts/settings.py": "1a8e48d98645c93e7c4a260d3c1d6beacdbe16fea4da139631d3b1ea1d07c629",
+    "scripts/memory_tracker.py": "cc5e8abeee4cf0ecc13a47e9ddb2f0ccaf07f553368739f5928307bd2e9b478c",
+    "scripts/fast_paths.py": "70b16a26a23ffc69deff67e3243f68005170c2ea4bb761048b7638c9bf4298ce"
   },
   "settings": {
     "initial_price": 100.0,
@@ -394,7 +298,7 @@
     "alpha": 0.5,
     "risk_aversion": 1.0,
     "warmup_updates": 100,
-    "continuation_updates": 1000,
+    "continuation_updates": 500,
     "learning_rate": 0.005,
     "entropic_learning_rate": 0.0005,
     "gradient_limit": 10.0,
@@ -412,7 +316,7 @@
     "validation_seed": 20200,
     "test_seed": 40400,
     "torch_threads": 1,
-    "static_training_size": 262144,
+    "static_training_size": 131072,
     "retain_training_batches": false,
     "network": {
       "hidden_sizes": [
@@ -512,11 +416,11 @@
   },
   "raw_training_batches_retained": 0,
   "versions": {
-    "python": "3.12.14",
-    "torch": "2.5.1+cpu",
-    "numpy": "2.3.5",
+    "python": "3.13.14",
+    "torch": "2.15.0+cpu",
+    "numpy": "2.4.2",
     "psutil": "7.2.2",
-    "platform": "linux",
+    "platform": "win32",
     "simulation_backend": "numba"
   },
   "measurement_scope": "Sampled RSS of one isolated CPU training process during data preparation, training and test evaluation; notebook and monitor processes excluded. Simulator compilation is warmed before timing. No GPU memory measured."

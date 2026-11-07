@@ -1,0 +1,7 @@
+paper_full_0_warmup: update 0, validation risk 17.94673
+paper_full_0_warmup: update 100, validation risk 10.60519
+paper_full_0_CVaR: update 0, validation risk 10.60648
+paper_full_0_CVaR: update 500, validation risk 9.07401
+paper_full_0_Entropic: update 0, validation risk 17.42041
+paper_full_0_Entropic: update 500, validation risk 20.68700
+Paper network: stock + variance: baseline 289.6 MiB | sampled peak 1399.1 MiB | peak increase 1109.5 MiB | 97.0 s
