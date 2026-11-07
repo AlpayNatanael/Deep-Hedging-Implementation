@@ -6,9 +6,10 @@ Use explain=True for a separate interpretation below the figure, and
 save_dir="figures" to export 300-dpi PNGs and vector SVGs.
 No data, scores, model weights, or training settings are changed.
 
-All nine public plotting functions are available:
+All ten public plotting functions are available:
     plot_learning, plot_learning_simple, plot_losses, plot_pnl_histogram,
-    plot_pnl_comparison, plot_risk, plot_loss_tails, plot_paths, and show_published_figure.
+    plot_pnl_comparison, plot_risk, plot_loss_tails, plot_paths,
+    show_published_figure, and plot_memory_comparison.
 
 The first seven accept objective="CVaR" or objective="Entropic".
 Omitting objective displays all common fitted objectives, except that
@@ -27,7 +28,7 @@ the file. Use print(plots.__file__) to check which file the notebook imports.
 """
 
 # Functions beginning with an underscore are helpers used by the plotting functions.
-# The nine functions near the end are the ones you normally call in a notebook.
+# The public functions near the end are the ones you normally call in a notebook.
 # An experiment supplies stored data and training records; this file draws them.
 import io
 import json
@@ -922,4 +923,87 @@ def plot_pnl_comparison(
     plt.close(figure)
     return figure, axes
 
+def plot_memory_comparison(reports, *, save_dir=None, show=True):
+    """Compare peak CPU RAM and runtime from two stored memory reports.
 
+    Accepts the reports returned by run_memory_experiment().
+    With show=False, returns (figure, axes).
+    """
+
+    # Identify the fixed-pool and fresh-batch reports.
+    reports = list(reports)
+    if len(reports) != 2 or {
+        r["dynamic_data"] for r in reports
+    } != {False, True}:
+        raise ValueError(
+            "Pass one fixed-pool report and one fresh-batch report."
+        )
+
+    fixed, fresh = sorted(reports, key=lambda r: r["dynamic_data"])
+    reports = [fixed, fresh]
+
+    # Require matching settings, test paths, quotes and source code.
+    for key in (
+        "comparison_signature",
+        "test_data_id",
+        "instrument_data_ids",
+        "source_hashes",
+    ):
+        if key not in fixed or key not in fresh or fixed[key] != fresh[key]:
+            raise ValueError(f"The two memory reports do not match: {key}")
+
+    # Convert the recorded measurements to GiB and minutes.
+    values = np.array([
+        [r["memory"]["peak_mib"] / 1024 for r in reports],
+        [r["memory"]["seconds"] / 60 for r in reports],
+    ], dtype=float)
+
+    if not np.isfinite(values).all() or np.any(values <= 0):
+        raise ValueError("Memory and runtime must be positive and finite.")
+
+    # Use the actual dataset and batch sizes in the labels.
+    labels = [
+        f"Fixed pool\n{fixed['settings']['static_training_size']:,} paths",
+        f"Fresh batches\n{fresh['settings']['batch_size']:,} paths per update",
+    ]
+
+    panels = [
+        ("Sampled peak CPU RAM", "GiB"),
+        ("Data preparation, training and evaluation", "Minutes"),
+    ]
+
+    # Draw the same two panels currently shown in the notebook.
+    figure, axes = plt.subplots(
+        1, 2, figsize=(10, 4), dpi=DEFAULT_DPI
+    )
+
+    for axis, measured, (title, unit) in zip(axes, values, panels):
+        bars = axis.bar(
+            labels,
+            measured,
+            color=["#4c78a8", "#f58518"],
+            width=0.6,
+        )
+        axis.bar_label(
+            bars,
+            labels=[f"{value:.2f}" for value in measured],
+            padding=4,
+        )
+        axis.set_title(title, fontsize=11)
+        axis.set_ylabel(unit)
+        axis.set_ylim(0, measured.max() * 1.22)
+        axis.grid(axis="y", alpha=0.2)
+        axis.set_axisbelow(True)
+
+    figure.suptitle(
+        "Same portfolio and network; fixed pool versus fresh batches"
+    )
+
+    # Reuse the existing SVG display and PNG/SVG saving behavior.
+    # Neither panel needs a legend: the x-axis labels identify the modes.
+    _finish(
+        figure, axes[0], "memory_comparison",
+        "", show, False, save_dir,
+    )
+
+    return (figure, axes) if not show else None
