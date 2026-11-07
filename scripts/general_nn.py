@@ -5,6 +5,7 @@ Heston and risk helpers live at the end of this file to keep imports small.
 """
 from __future__ import annotations
 import copy
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 import hashlib
 import json
@@ -343,7 +344,8 @@ class generalNN:
     # is accepted only in static mode. No optimization starts here.
     # Initialize storage for selected models, data, histories and results.
     def __init__(self, method, settings=None, dynamic_data=True, training_data=None,
-                 data_generator=None, name=None):
+                 data_generator="Regular", name=None, *,
+                 fast_workers=6, fast_prefetch=2):
         if not isinstance(dynamic_data, bool):
             raise TypeError("dynamic_data must be a boolean.")
         # Store the network preset: "ours" or "paper".
@@ -372,9 +374,25 @@ class generalNN:
         # False: sample batches from a fixed training dataset.
         self.dynamic_data = dynamic_data
 
-        # Store an optional custom function for generating market data.
-        # If this is None, use the built-in market simulator.
+        # Built-in choices are opt-in; existing custom callbacks still work.
+        if data_generator is None:
+            data_generator = "Regular"
+        if isinstance(data_generator, str):
+            choices = {"regular": "Regular", "fast": "Fast"}
+            try:
+                data_generator = choices[data_generator.strip().lower()]
+            except KeyError:
+                raise ValueError("data_generator must be 'Regular', 'Fast', or a callable.") from None
+        elif not callable(data_generator):
+            raise TypeError("data_generator must be 'Regular', 'Fast', None, or a callable.")
+        if type(fast_workers) is not int or fast_workers < 1:
+            raise ValueError("fast_workers must be a positive integer.")
+        if type(fast_prefetch) is not int or fast_prefetch < 0:
+            raise ValueError("fast_prefetch must be a nonnegative integer.")
         self.data_generator = data_generator
+        self.fast_workers = fast_workers
+        self.fast_prefetch = fast_prefetch
+        self._fast_generator = None  # No worker pool is created here.
 
         # Build the initial trading policy, with one network per trading day.
         self.network = self._make_network()
@@ -409,6 +427,8 @@ class generalNN:
 
         # Store descriptive information about the experiment.
         self.metadata = {
+            "data_generator": "Custom" if callable(data_generator) else data_generator,
+            "evaluation_generator": "Custom" if callable(data_generator) else "Regular",
 
             # Name of the numerical scheme used by the built-in market simulator.
             "simulation_scheme": SIMULATION_SCHEME,
@@ -522,9 +542,9 @@ class generalNN:
     # It is preserved exactly; it currently prevents the module from parsing.
     def _generate(self, size, generator, seed, role):
         """This function is responsible for creating a 'DataSet' of market paths. """
-        if self.data_generator is None and self.metadata.get("custom_generator_requires_reconnection"):
+        if not callable(self.data_generator) and self.metadata.get("custom_generator_requires_reconnection"):
             raise ValueError("Reconnect the saved experiment's custom data_generator before generating more data.")
-        if self.data_generator is not None:
+        if callable(self.data_generator):
             data = self._check_data(self.data_generator(size, generator, self.settings))
             if len(data) != size:
                 raise ValueError("The custom generator returned the wrong batch size.")
@@ -532,6 +552,14 @@ class generalNN:
             return data
         if any(item.kind == "observed" for item in self.settings.instruments):
             raise ValueError("Observed instruments require supplied data or an explicit data_generator.")
+        # Built-in validation/test generation always uses the existing routine,
+        # so Regular and Fast experiments share the same evaluation scenarios.
+        if self.data_generator == "Fast" and role not in {"validation", "test"}:
+            if self._fast_generator is None:
+                from scripts.fast_paths import FastPathGenerator
+                self._fast_generator = FastPathGenerator(self.settings, self.fast_workers)
+            values = self._fast_generator.generate(size, generator)
+            return self._check_data(DataSet(**values, seed=seed, role=role))
         stocks, variances, variance_claims = [], [], []
         payoff = np.zeros(size)
         for index, stock in enumerate(self.settings.stocks):
@@ -591,6 +619,22 @@ class generalNN:
             # Return the selected paths and their indices.
             batch = pool.select(indices, role)
             return batch, indices
+
+    def _training_batch_stream(self, generator, seed, updates):
+        """Prefetch only Fast fresh-data updates; preserve ordered RNG draws."""
+        def make_batch():
+            return self._batch(self.settings.batch_size, generator, seed, "training_batch")
+        if (self.data_generator == "Fast" and self.dynamic_data
+                and self.fast_prefetch > 0 and updates > 0):
+            from scripts.fast_paths import PrefetchedBatches
+            return PrefetchedBatches(make_batch, updates, self.fast_prefetch)
+        return nullcontext(make_batch() for _ in range(updates))
+
+    def close(self):
+        """Release optional workers. train() calls this even after an error."""
+        if self._fast_generator is not None:
+            self._fast_generator.close()
+            self._fast_generator = None
 
     # Turn holdings (B, N, D) and supplied instrument paths into money.
     # Apply contract multipliers, then sum price gains and asset cashflows.
@@ -696,52 +740,53 @@ class generalNN:
         best_risk = float("inf")
         clipped = 0
         start = time.perf_counter()
-        for update in range(updates + 1):
-            # Measure fixed validation paths before the next update, including update 0.
-            if update % settings.validation_interval == 0 or update == updates:
-                self._calibrate(model, calibration)
-                losses, _ = self._score(model, self.data["validation"])
-                value = risk_value(losses, objective, settings).item()
-                if not math.isfinite(value):
-                    raise RuntimeError("Validation risk became nonfinite.")
-                history.append({"update": update, "risk": value, "elapsed_seconds": time.perf_counter() - start})
-                # Save a separate copy so later optimizer steps cannot overwrite this checkpoint.
-                if value < best_risk:
-                    best_risk, best_update = value, update
-                    best_state, best_threshold = copy.deepcopy(model.state_dict()), threshold.item()
-                if verbose and (update % 500 == 0 or update == updates):
-                    print(f"{stage}: update {update}, validation risk {value:.5f}", flush=True)
-            if update == updates:
-                break
-            # Use only training data for this gradient update.
-            batch, indices = self._batch(settings.batch_size, generator, seed, "training_batch")
-            model.train()
-            holdings = model(batch.stock_prices, batch.variances)
-            losses, costs = self.calculate_losses(batch, holdings)
-            loss = training_objective(losses, objective, threshold, settings)
-            if not torch.isfinite(loss):
-                raise RuntimeError("Training objective became nonfinite.")
-            # Differentiate terminal risk, limit the gradient norm, then take one Adam step.
-            # The norm cap changes the update, not the recorded financial losses.
-            optimizer.zero_grad(set_to_none=True)
-            loss.backward()
-            gradient = nn.utils.clip_grad_norm_(parameters, settings.gradient_limit, error_if_nonfinite=True)
-            optimizer.step()
-            clipped += int(gradient > settings.gradient_limit)
-            # Store the pre-update batch objective and diagnostics for this completed step.
-            record = {"stage": stage, "objective": objective, "replicate": replicate, "seed": seed,
-                      "update": update + 1, "mode": "dynamic" if self.dynamic_data else "static",
-                      "paths": len(batch), "training_objective": loss.item(), "mean_loss": losses.mean().item(),
-                      "mean_cost": costs.mean().item(), "gradient_norm_before_clipping": gradient.item()}
-            if indices is not None:
-                record["pool_size"] = len(self.data["training"])
-                record["distinct_pool_rows"] = len(np.unique(indices))
-            if settings.retain_training_batches:
-                self.training_batches.setdefault(stage, []).append(batch)
-                record.update(losses=losses.detach().tolist(), costs=costs.detach().tolist())
+        with self._training_batch_stream(generator, seed, updates) as batches:
+            for update in range(updates + 1):
+                # Measure fixed validation paths before the next update, including update 0.
+                if update % settings.validation_interval == 0 or update == updates:
+                    self._calibrate(model, calibration)
+                    losses, _ = self._score(model, self.data["validation"])
+                    value = risk_value(losses, objective, settings).item()
+                    if not math.isfinite(value):
+                        raise RuntimeError("Validation risk became nonfinite.")
+                    history.append({"update": update, "risk": value, "elapsed_seconds": time.perf_counter() - start})
+                    # Save a separate copy so later optimizer steps cannot overwrite this checkpoint.
+                    if value < best_risk:
+                        best_risk, best_update = value, update
+                        best_state, best_threshold = copy.deepcopy(model.state_dict()), threshold.item()
+                    if verbose and (update % 500 == 0 or update == updates):
+                        print(f"{stage}: update {update}, validation risk {value:.5f}", flush=True)
+                if update == updates:
+                    break
+                # Use only training data for this gradient update.
+                batch, indices = next(batches)
+                model.train()
+                holdings = model(batch.stock_prices, batch.variances)
+                losses, costs = self.calculate_losses(batch, holdings)
+                loss = training_objective(losses, objective, threshold, settings)
+                if not torch.isfinite(loss):
+                    raise RuntimeError("Training objective became nonfinite.")
+                # Differentiate terminal risk, limit the gradient norm, then take one Adam step.
+                # The norm cap changes the update, not the recorded financial losses.
+                optimizer.zero_grad(set_to_none=True)
+                loss.backward()
+                gradient = nn.utils.clip_grad_norm_(parameters, settings.gradient_limit, error_if_nonfinite=True)
+                optimizer.step()
+                clipped += int(gradient > settings.gradient_limit)
+                # Store the pre-update batch objective and diagnostics for this completed step.
+                record = {"stage": stage, "objective": objective, "replicate": replicate, "seed": seed,
+                          "update": update + 1, "mode": "dynamic" if self.dynamic_data else "static",
+                          "paths": len(batch), "training_objective": loss.item(), "mean_loss": losses.mean().item(),
+                          "mean_cost": costs.mean().item(), "gradient_norm_before_clipping": gradient.item()}
                 if indices is not None:
-                    record["pool_indices"] = indices.tolist()
-            self.batch_records.append(record)
+                    record["pool_size"] = len(self.data["training"])
+                    record["distinct_pool_rows"] = len(np.unique(indices))
+                if settings.retain_training_batches:
+                    self.training_batches.setdefault(stage, []).append(batch)
+                    record.update(losses=losses.detach().tolist(), costs=costs.detach().tolist())
+                    if indices is not None:
+                        record["pool_indices"] = indices.tolist()
+                self.batch_records.append(record)
         # Use the best validation checkpoint, not necessarily the last training update.
         model.load_state_dict(best_state)
         model.eval()
@@ -762,30 +807,33 @@ class generalNN:
         objectives = tuple(objectives)
         if not objectives or len(set(objectives)) != len(objectives) or any(item not in OBJECTIVES for item in objectives):
             raise ValueError("Choose one or both distinct objectives: CVaR, Entropic.")
-        self.prepare_data(include_test=False)
-        settings = self.settings
-        for replicate in range(settings.number_of_replicates):
-            model = self._make_network(replicate)
-            seed = settings.training_seed + 100 * replicate
-            # All objective branches share this initial CVaR-trained policy.
-            warmup = self._train_stage(model, "CVaR", replicate, "warmup", seed,
-                                      settings.warmup_updates, settings.learning_rate, verbose)
-            warm_state = copy.deepcopy(model.state_dict())
-            # Reset to the same warm-up weights before fitting each final objective.
-            for objective in objectives:
-                model.load_state_dict(warm_state)
-                rate = settings.learning_rate if objective == "CVaR" else settings.entropic_learning_rate
-                stage = self._train_stage(model, objective, replicate, objective, seed + 1,
-                                          settings.continuation_updates, rate, verbose)
-                run_id = f"{self.family}_{objective}_{replicate}"
-                self.runs.append({"run_id": run_id, "loss_key": "loss_" + run_id,
-                                  "family": self.family, "objective": objective, "replicate_id": replicate,
-                                  "simulation_scheme": SIMULATION_SCHEME, "parameter_count": self.parameter_count,
-                                  "warmup": warmup, **stage})
-                self.models[run_id] = copy.deepcopy(model)
-        # Expose the first selected policy here; models retains every objective/replicate.
-        self.network = self.models[self.runs[0]["run_id"]]
-        return self
+        try:
+            self.prepare_data(include_test=False)
+            settings = self.settings
+            for replicate in range(settings.number_of_replicates):
+                model = self._make_network(replicate)
+                seed = settings.training_seed + 100 * replicate
+                # All objective branches share this initial CVaR-trained policy.
+                warmup = self._train_stage(model, "CVaR", replicate, "warmup", seed,
+                                          settings.warmup_updates, settings.learning_rate, verbose)
+                warm_state = copy.deepcopy(model.state_dict())
+                # Reset to the same warm-up weights before fitting each final objective.
+                for objective in objectives:
+                    model.load_state_dict(warm_state)
+                    rate = settings.learning_rate if objective == "CVaR" else settings.entropic_learning_rate
+                    stage = self._train_stage(model, objective, replicate, objective, seed + 1,
+                                              settings.continuation_updates, rate, verbose)
+                    run_id = f"{self.family}_{objective}_{replicate}"
+                    self.runs.append({"run_id": run_id, "loss_key": "loss_" + run_id,
+                                      "family": self.family, "objective": objective, "replicate_id": replicate,
+                                      "simulation_scheme": SIMULATION_SCHEME, "parameter_count": self.parameter_count,
+                                      "warmup": warmup, **stage})
+                    self.models[run_id] = copy.deepcopy(model)
+            # Expose the first selected policy here; models retains every objective/replicate.
+            self.network = self.models[self.runs[0]["run_id"]]
+            return self
+        finally:
+            self.close()
 
     fit = train
 
@@ -1004,13 +1052,18 @@ class generalNN:
         # Package data and selected weights; optimizer state is intentionally absent.
         payload = {name: encode(getattr(self, name)) for name in (
             "method", "name", "dynamic_data", "runs", "arrays", "benchmarks", "metadata", "batch_records", "measurements")}
-        payload.update(format_version=1, settings=self.settings.to_dict(), network=self.network.state_dict(),
+        payload.update(format_version=2 if self.data_generator == "Fast" else 1,
+                       settings=self.settings.to_dict(), network=self.network.state_dict(),
+                       data_generator=("Custom" if (callable(self.data_generator) or
+                                       self.metadata.get("custom_generator_requires_reconnection", False))
+                                       else self.data_generator),
+                       fast_workers=self.fast_workers, fast_prefetch=self.fast_prefetch,
                        models={name: model.state_dict() for name, model in self.models.items()},
                        data={name: encode(vars(data)) for name, data in self.data.items()},
                        training_batches={name: [encode(vars(data)) for data in batches]
                                          for name, batches in self.training_batches.items()},
                        historical_results={name: result._snapshot() for name, result in self.historical_results.items()},
-                       custom_generator_required=(self.data_generator is not None or
+                       custom_generator_required=(callable(self.data_generator) or
                                                   self.metadata.get("custom_generator_requires_reconnection", False)))
         return payload
 
@@ -1029,7 +1082,7 @@ class generalNN:
     # Return the restored object. No training or optimizer recovery occurs.
     @classmethod
     def _restore(cls, payload):
-        if payload["format_version"] != 1:
+        if payload["format_version"] not in {1, 2}:
             raise ValueError("Unsupported experiment format.")
         # Recursively convert stored tensor data into NumPy arrays.
         # Process dictionaries and lists; preserve other values as they are.
@@ -1043,8 +1096,14 @@ class generalNN:
                 return [decode(item) for item in value]
             return value
         # Recreate the configured architecture before assigning the saved weights.
+        mode = payload.get("data_generator", "Regular")
+        if mode not in {"Regular", "Fast", "Custom"}:
+            raise ValueError("Unknown saved data generator.")
         result = cls(payload["method"], Settings.from_dict(payload["settings"]),
-                     payload["dynamic_data"], name=payload["name"])
+                     payload["dynamic_data"], name=payload["name"],
+                     data_generator="Regular" if mode == "Custom" else mode,
+                     fast_workers=payload.get("fast_workers", 6),
+                     fast_prefetch=payload.get("fast_prefetch", 2))
         for name in ("runs", "arrays", "benchmarks", "metadata", "batch_records", "measurements"):
             setattr(result, name, decode(payload[name]))
         result.network.load_state_dict(payload["network"], strict=True)
@@ -1059,8 +1118,11 @@ class generalNN:
         result.training_batches = {name: [DataSet(**decode(data)) for data in batches]
                                    for name, batches in payload["training_batches"].items()}
         result.historical_results = {name: cls._restore(data) for name, data in payload["historical_results"].items()}
-        if payload["custom_generator_required"]:
+        if payload["custom_generator_required"] or mode == "Custom":
             result.metadata["custom_generator_requires_reconnection"] = True
+            mode = "Custom"
+        result.metadata.setdefault("data_generator", mode)
+        result.metadata.setdefault("evaluation_generator", "Custom" if mode == "Custom" else "Regular")
         return result
 
     # Read folder/experiment.pt onto the CPU, then rebuild it with _restore().
