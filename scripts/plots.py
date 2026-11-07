@@ -4,14 +4,15 @@ Existing calls still work. Each risk objective gets its own full-size figure.
 Use objective="CVaR" or objective="Entropic" to display just one objective.
 Use explain=True for a separate interpretation below the figure, and
 save_dir="figures" to export 300-dpi PNGs and vector SVGs.
+Use plot_results_grid to arrange learning, risk and loss tails in one figure.
 No data, scores, model weights, or training settings are changed.
 
-All ten public plotting functions are available:
+All eleven public plotting functions are available:
     plot_learning, plot_learning_simple, plot_losses, plot_pnl_histogram,
     plot_pnl_comparison, plot_risk, plot_loss_tails, plot_paths,
-    show_published_figure, and plot_memory_comparison.
+    show_published_figure, plot_memory_comparison, and plot_results_grid.
 
-The first seven accept objective="CVaR" or objective="Entropic".
+The first seven and plot_results_grid accept objective="CVaR" or objective="Entropic".
 Omitting objective displays all common fitted objectives, except that
 plot_learning_simple and plot_pnl_comparison default to CVaR.
 plot_pnl_comparison requires one common premium and shows full and central views. Objective names are
@@ -22,6 +23,7 @@ Example notebook calls after installing this file as scripts/plots.py:
     from scripts import plots
     plots.plot_risk([ours, ours_variance], objective="CVaR")
     plots.plot_loss_tails([ours, ours_variance], objective="Entropic")
+    plots.plot_results_grid([paper, ours])
 
 If plots was already imported, run importlib.reload(plots) after replacing
 the file. Use print(plots.__file__) to check which file the notebook imports.
@@ -193,12 +195,9 @@ def _array(values):
     return values
 
 
-# Create a new figure with one plotting area and the shared visual style.
-# Inputs supply the title, axis labels, resolution (dpi), and size in inches.
-# Return (figure, axis). The caller adds the actual curves, bars, or points.
-def _figure(title, xlabel, ylabel, dpi, figsize):
-    figure = plt.figure(figsize=figsize, dpi=dpi)
-    axis = figure.add_subplot(111)
+# Give standalone figures and grid panels the same axis appearance.
+def _style_axis(axis, title, xlabel, ylabel):
+    """Apply the common appearance to a standalone plot or a grid panel."""
     axis.set_title(title, fontsize=15, pad=18)
     axis.set_xlabel(xlabel, fontsize=13, labelpad=9)
     axis.set_ylabel(ylabel, fontsize=13, labelpad=9)
@@ -210,6 +209,13 @@ def _figure(title, xlabel, ylabel, dpi, figsize):
     axis.spines["right"].set_visible(False)
     # Show ordinary numbers rather than a separate scientific-notation offset.
     axis.ticklabel_format(axis="y", style="plain", useOffset=False)
+
+
+# Create one plotting area. The caller adds the curves, bars or points.
+def _figure(title, xlabel, ylabel, dpi, figsize):
+    figure = plt.figure(figsize=figsize, dpi=dpi)
+    axis = figure.add_subplot(111)
+    _style_axis(axis, title, xlabel, ylabel)
     return figure, axis
 
 
@@ -275,6 +281,202 @@ def _filename(kind, experiments, objective=""):
     return re.sub(r"[^a-z0-9_-]+", "_", f"{kind}_{families}_{objective}".lower()).strip("_")
 
 
+def _draw_learning(axis, experiments, name, replicate):
+    """Draw stored validation histories on an existing axis."""
+    values = []
+    for experiment in experiments:
+        runs = _runs(experiment, name)
+        if replicate is not None:
+            runs = [experiment.get_run(name, int(replicate))]
+        # Organize each run as update number -> validation score so runs can be aligned.
+        histories = [
+            {int(row["update"]): float(row["risk"]) for row in run["history"]}
+            for run in runs
+        ]
+        if any(not history for history in histories):
+            raise ValueError("A run has an empty validation history.")
+        # For this experiment, compare repeated runs only at updates they all recorded.
+        common = sorted(set.intersection(*(set(history) for history in histories)))
+        if not common:
+            raise ValueError("The runs have no common recorded update.")
+        # Each row is a run and each column is one shared update.
+        # The bold curve takes the median across runs separately at each update.
+        matrix = np.array([[history[step] for step in common] for history in histories])
+        median, = axis.plot(
+            common, np.median(matrix, axis=0), linewidth=2.4,
+            marker="o" if len(common) <= 15 else None, markersize=4,
+            label=_label(experiment, experiments),
+        )
+        # Keep individual histories visible as faint curves when there are several runs.
+        for run, history in zip(runs, histories):
+            updates = sorted(history)
+            risks = [history[step] for step in updates]
+            values.extend(risks)
+            if len(runs) > 1:
+                axis.plot(updates, risks, color=median.get_color(), alpha=0.28, linewidth=1)
+            # Mark the checkpoint already selected during training; plotting selects no new model.
+            chosen = int(run["best_update"])
+            axis.scatter(
+                chosen, history[chosen], s=80, facecolors="none",
+                edgecolors=median.get_color(), linewidths=1.7, zorder=5,
+            )
+    # Use a logarithmic vertical axis when positive scores span a large range.
+    # This changes the axis spacing while keeping all recorded values.
+    if min(values) > 0 and max(values) / min(values) > 6:
+        axis.set_yscale("log")
+        axis.yaxis.set_major_locator(LogLocator(subs=(1, 2, 5)))
+        axis.yaxis.set_major_formatter(ScalarFormatter())
+        axis.yaxis.set_minor_formatter(NullFormatter())
+        axis.set_ylabel("Validation risk (log scale; lower is better)", fontsize=13)
+    explanation = (
+        "The horizontal axis counts optimizer updates after the CVaR warm-up, not market days. "
+        "Lower validation risk is better. With multiple runs, faint lines show individual runs "
+        "and the bold line is their median at common recorded checkpoints. With one run, "
+        "the bold line is that run. Open circles mark validation-selected checkpoints. "
+        "Straight segments join recorded observations; there is no smoothing. "
+        "Warm-up updates are not displayed. CVaR and entropic risk use different criteria."
+    )
+    if axis.get_yscale() == "log":
+        explanation += " The vertical axis is logarithmic to retain large validation spikes."
+    return explanation
+
+
+def _draw_risk(axis, experiments, name):
+    """Draw the stored test scores without recomputing them."""
+    reference = experiments[0]
+    # Saved metric keys are lowercase: "cvar" and "entropic".
+    metric = name.lower()
+    all_values = []
+    for index, experiment in enumerate(experiments):
+        scores = np.array([run["metrics"][metric] for run in _runs(experiment, name)])
+        # Spread run dots slightly left and right so repeated runs are easier to see.
+        # These horizontal offsets do not change their risk scores.
+        offsets = np.linspace(-0.08, 0.08, len(scores)) if len(scores) > 1 else [0]
+        points = axis.scatter(
+            index + np.asarray(offsets), scores, s=45, zorder=4,
+            label="Individual training run" if index == 0 else None,
+        )
+        # The diamond is the arithmetic mean of the separate runs' risk scores.
+        # It is not a confidence interval or the risk of an averaged trading strategy.
+        axis.scatter(
+            index, scores.mean(), s=115, marker="D", facecolors="none",
+            edgecolors=points.get_facecolor(), linewidths=2, zorder=5,
+            label="Mean across runs" if index == 0 else None,
+        )
+        axis.annotate(
+            f"Mean {scores.mean():.3f}", (index, scores.mean()),
+            xytext=(0, 13), textcoords="offset points", ha="center", fontsize=11,
+        )
+        all_values.extend(scores.tolist())
+    # Use the same objective's stored no-hedging score as the final comparison point.
+    baseline = float(reference.benchmarks["no_hedge"][metric])
+    position = len(experiments)
+    axis.scatter(position, baseline, s=65, marker="s", zorder=4)
+    axis.annotate(
+        f"{baseline:.3f}", (position, baseline), xytext=(0, 13),
+        textcoords="offset points", ha="center", fontsize=11,
+    )
+    all_values.append(baseline)
+    # Leave room above and below the points for readable numeric labels.
+    span = max(float(np.ptp(all_values)), 0.2)
+    axis.set_ylim(min(all_values) - 0.13 * span, max(all_values) + 0.25 * span)
+    axis.set_xlim(-0.5, position + 0.5)
+    labels = [_label(item, experiments).replace(": ", ":\n") for item in experiments]
+    axis.set_xticks(range(position + 1))
+    axis.set_xticklabels(labels + ["No hedge"], fontsize=10.5)
+    explanation = (
+        "Lower is better. Small dots are individual training runs, open diamonds are their "
+        "arithmetic mean, and the square is no hedging. All policies shown here were trained "
+        "for the named objective and evaluated on common scenarios. Variation across training "
+        "runs is not a confidence interval. The mean of their risk scores is not the risk of "
+        "an averaged or ensemble trading policy. Different risk objectives have separate plots."
+    )
+    return explanation
+
+
+def _draw_loss_tails(axis, experiments, name, replicate, threshold):
+    """Draw exact empirical loss tails, including all sample extremes."""
+    reference = experiments[0]
+    no_hedge = _array(reference.arrays["benchmark_loss_no_hedge"])
+    series = [
+        (_label(item, experiments), _array(item.losses(name, _replicate(item, replicate))))
+        for item in experiments
+    ]
+    series.append(("No hedge", no_hedge))
+    # All displayed strategies must have the same number of evaluation scenarios.
+    if any(len(values) != len(no_hedge) for _, values in series):
+        raise ValueError("Tail comparisons require the same number of evaluation scenarios.")
+    for index, (label, losses) in enumerate(series):
+        # Sort the losses and keep each distinct value with its first sorted position.
+        # N minus that position counts every loss >= this value, including ties.
+        values, first_indices = np.unique(np.sort(losses), return_index=True)
+        percentages = 100 * (len(losses) - first_indices) / len(losses)
+        # Draw the empirical percentages as steps; each height comes from the sample counts.
+        line, = axis.step(
+            values, percentages, where="pre", linewidth=2.2,
+            linestyle="--" if index == len(experiments) else "-", label=label,
+        )
+        # Mark the largest observed loss. If several scenarios tie there, its height
+        # includes all of them and can exceed the frequency of a single scenario.
+        axis.scatter(
+            values[-1], percentages[-1], s=50, facecolors="none",
+            edgecolors=line.get_color(), linewidths=1.5, zorder=4,
+        )
+    # A frequency of 100/N percent corresponds to one observed scenario.
+    # The log axis makes rare outcomes visible; it cannot display zero frequency.
+    one_path = 100 / len(no_hedge)
+    axis.set_yscale("log")
+    ticks = [10.0 ** power for power in range(-10, 3) if one_path <= 10.0 ** power <= 100]
+    axis.set_yticks(ticks)
+    axis.set_yticklabels([f"{tick:g}%" for tick in ticks])
+    axis.yaxis.set_minor_formatter(NullFormatter())
+    axis.set_ylim(one_path / 1.8, 125)
+    axis.axhline(one_path, linestyle=":", linewidth=1, alpha=0.45)
+    axis.text(
+        0.99, one_path / 1.12, f"1 of {len(no_hedge):,} scenarios = {one_path:.4g}%",
+        transform=axis.get_yaxis_transform(), ha="right", va="top", fontsize=9,
+    )
+    # The optional vertical line is only a reading aid; it does not cut off any losses.
+    if threshold is not None:
+        if not np.isfinite(threshold):
+            raise ValueError("threshold must be finite or None.")
+        axis.axvline(threshold, linestyle=":", linewidth=1, alpha=0.6)
+        axis.text(
+            threshold, 0.98, f"  Threshold = {threshold:g}",
+            transform=axis.get_xaxis_transform(), ha="left", va="top", fontsize=9,
+        )
+    explanation = (
+        "Choose a loss threshold on the horizontal axis, then read the percentage of "
+        "evaluation scenarios with loss at least that large. A lower curve at that threshold "
+        "means fewer exceedances. The vertical axis is logarithmic: adjacent decade ticks "
+        "represent a factor of ten. Each open endpoint is the largest loss in that sample, "
+        "not a bound on future loss. The dotted horizontal line marks one scenario. "
+        "A horizontal tail is an interval with no intervening observed losses, not missing data. "
+        "All sample extremes are shown, without smoothing or interpolation of probabilities. "
+        "These are scenario frequencies, not the exponential weights used by entropic risk. "
+        "The figure uses the configured display replicate (or the requested replicate), "
+        "not a pooled sample of training runs."
+    )
+    # Add an optional explanation of exponential weighting for entropic risk.
+    # These weights describe risk sensitivity; the plotted curves remain scenario frequencies.
+    if name == "Entropic":
+        details = []
+        lam = reference.settings.risk_aversion
+        for label, losses in series[:-1]:
+            # Subtract the maximum loss before exponentiation to keep positive-lambda
+            # weights numerically manageable. Their normalized shares stay the same.
+            weights = np.exp(lam * (losses - losses.max()))
+            # One maximum-loss scenario has scaled weight 1, so its share is 100/sum.
+            # With tied maxima, this reports one such scenario's share, not their combined share.
+            largest_weight = 100 / weights.sum()
+            details.append(
+                f"{label}: maximum loss {losses.max():.3f}; one maximum-loss scenario "
+                f"has {largest_weight:.1f}% of the exponential weight"
+            )
+        explanation += " For the displayed runs, " + "; ".join(details) + "."
+    return explanation
+
+
 # Show how the saved validation risk changed during training.
 # Pass one experiment or a list. Choose objective="CVaR" or "Entropic",
 # or leave objective=None to show every objective shared by the experiments.
@@ -299,61 +501,7 @@ def plot_learning(experiments, objective=None, replicate=None, *, dpi=DEFAULT_DP
             "How does the network learn?\n" + _criterion(name, experiments[0].settings),
             "Updates after warm-up", "Validation risk (lower is better)", dpi, figsize,
         )
-        values = []
-        for experiment in experiments:
-            runs = _runs(experiment, name)
-            if replicate is not None:
-                runs = [experiment.get_run(name, int(replicate))]
-            # Organize each run as update number -> validation score so runs can be aligned.
-            histories = [
-                {int(row["update"]): float(row["risk"]) for row in run["history"]}
-                for run in runs
-            ]
-            if any(not history for history in histories):
-                raise ValueError("A run has an empty validation history.")
-            # For this experiment, compare repeated runs only at updates they all recorded.
-            common = sorted(set.intersection(*(set(history) for history in histories)))
-            if not common:
-                raise ValueError("The runs have no common recorded update.")
-            # Each row is a run and each column is one shared update.
-            # The bold curve takes the median across runs separately at each update.
-            matrix = np.array([[history[step] for step in common] for history in histories])
-            median, = axis.plot(
-                common, np.median(matrix, axis=0), linewidth=2.4,
-                marker="o" if len(common) <= 15 else None, markersize=4,
-                label=_label(experiment, experiments),
-            )
-            # Keep individual histories visible as faint curves when there are several runs.
-            for run, history in zip(runs, histories):
-                updates = sorted(history)
-                risks = [history[step] for step in updates]
-                values.extend(risks)
-                if len(runs) > 1:
-                    axis.plot(updates, risks, color=median.get_color(), alpha=0.28, linewidth=1)
-                # Mark the checkpoint already selected during training; plotting selects no new model.
-                chosen = int(run["best_update"])
-                axis.scatter(
-                    chosen, history[chosen], s=80, facecolors="none",
-                    edgecolors=median.get_color(), linewidths=1.7, zorder=5,
-                )
-        # Use a logarithmic vertical axis when positive scores span a large range.
-        # This changes the axis spacing while keeping all recorded values.
-        if min(values) > 0 and max(values) / min(values) > 6:
-            axis.set_yscale("log")
-            axis.yaxis.set_major_locator(LogLocator(subs=(1, 2, 5)))
-            axis.yaxis.set_major_formatter(ScalarFormatter())
-            axis.yaxis.set_minor_formatter(NullFormatter())
-            axis.set_ylabel("Validation risk (log scale; lower is better)", fontsize=13)
-        explanation = (
-            "The horizontal axis counts optimizer updates after the CVaR warm-up, not market days. "
-            "Lower validation risk is better. With multiple runs, faint lines show individual runs "
-            "and the bold line is their median at common recorded checkpoints. With one run, "
-            "the bold line is that run. Open circles mark validation-selected checkpoints. "
-            "Straight segments join recorded observations; there is no smoothing. "
-            "Warm-up updates are not displayed. CVaR and entropic risk use different criteria."
-        )
-        if axis.get_yscale() == "log":
-            explanation += " The vertical axis is logarithmic to retain large validation spikes."
+        explanation = _draw_learning(axis, experiments, name, replicate)
         output[name] = _finish(
             figure, axis, _filename("learning", experiments, name),
             explanation, show, explain, save_dir,
@@ -535,53 +683,7 @@ def plot_risk(experiments, objective=None, *, dpi=DEFAULT_DPI, figsize=DEFAULT_S
             "Which hedge has less risk?\n" + _criterion(name, reference.settings),
             "", "Measured risk before premium (lower is better)", dpi, figsize,
         )
-        # Saved metric keys are lowercase: "cvar" and "entropic".
-        metric = name.lower()
-        all_values = []
-        for index, experiment in enumerate(experiments):
-            scores = np.array([run["metrics"][metric] for run in _runs(experiment, name)])
-            # Spread run dots slightly left and right so repeated runs are easier to see.
-            # These horizontal offsets do not change their risk scores.
-            offsets = np.linspace(-0.08, 0.08, len(scores)) if len(scores) > 1 else [0]
-            points = axis.scatter(
-                index + np.asarray(offsets), scores, s=45, zorder=4,
-                label="Individual training run" if index == 0 else None,
-            )
-            # The diamond is the arithmetic mean of the separate runs' risk scores.
-            # It is not a confidence interval or the risk of an averaged trading strategy.
-            axis.scatter(
-                index, scores.mean(), s=115, marker="D", facecolors="none",
-                edgecolors=points.get_facecolor(), linewidths=2, zorder=5,
-                label="Mean across runs" if index == 0 else None,
-            )
-            axis.annotate(
-                f"Mean {scores.mean():.3f}", (index, scores.mean()),
-                xytext=(0, 13), textcoords="offset points", ha="center", fontsize=11,
-            )
-            all_values.extend(scores.tolist())
-        # Use the same objective's stored no-hedging score as the final comparison point.
-        baseline = float(reference.benchmarks["no_hedge"][metric])
-        position = len(experiments)
-        axis.scatter(position, baseline, s=65, marker="s", zorder=4)
-        axis.annotate(
-            f"{baseline:.3f}", (position, baseline), xytext=(0, 13),
-            textcoords="offset points", ha="center", fontsize=11,
-        )
-        all_values.append(baseline)
-        # Leave room above and below the points for readable numeric labels.
-        span = max(float(np.ptp(all_values)), 0.2)
-        axis.set_ylim(min(all_values) - 0.13 * span, max(all_values) + 0.25 * span)
-        axis.set_xlim(-0.5, position + 0.5)
-        labels = [_label(item, experiments).replace(": ", ":\n") for item in experiments]
-        axis.set_xticks(range(position + 1))
-        axis.set_xticklabels(labels + ["No hedge"], fontsize=10.5)
-        explanation = (
-            "Lower is better. Small dots are individual training runs, open diamonds are their "
-            "arithmetic mean, and the square is no hedging. All policies shown here were trained "
-            "for the named objective and evaluated on common scenarios. Variation across training "
-            "runs is not a confidence interval. The mean of their risk scores is not the risk of "
-            "an averaged or ensemble trading policy. Different risk objectives have separate plots."
-        )
+        explanation = _draw_risk(axis, experiments, name)
         output[name] = _finish(
             figure, axis, _filename("risk", experiments, name), explanation, show, explain, save_dir,
         )
@@ -611,93 +713,86 @@ def plot_loss_tails(experiments, threshold=5.0, *, objective=None, replicate=Non
     """
     experiments = _experiments(experiments)
     reference = experiments[0]
-    no_hedge = _array(reference.arrays["benchmark_loss_no_hedge"])
     output = {}
     for name in _objectives(experiments, objective):
-        series = [
-            (_label(item, experiments), _array(item.losses(name, _replicate(item, replicate))))
-            for item in experiments
-        ]
-        series.append(("No hedge", no_hedge))
-        # All displayed strategies must have the same number of evaluation scenarios.
-        if any(len(values) != len(no_hedge) for _, values in series):
-            raise ValueError("Tail comparisons require the same number of evaluation scenarios.")
         figure, axis = _figure(
             "Why can a few bad hedges matter so much?\n" + _criterion(name, reference.settings),
             "Loss threshold before premium", "Scenarios with at least this loss (%)", dpi, figsize,
         )
-        for index, (label, losses) in enumerate(series):
-            # Sort the losses and keep each distinct value with its first sorted position.
-            # N minus that position counts every loss >= this value, including ties.
-            values, first_indices = np.unique(np.sort(losses), return_index=True)
-            percentages = 100 * (len(losses) - first_indices) / len(losses)
-            # Draw the empirical percentages as steps; each height comes from the sample counts.
-            line, = axis.step(
-                values, percentages, where="pre", linewidth=2.2,
-                linestyle="--" if index == len(experiments) else "-", label=label,
-            )
-            # Mark the largest observed loss. If several scenarios tie there, its height
-            # includes all of them and can exceed the frequency of a single scenario.
-            axis.scatter(
-                values[-1], percentages[-1], s=50, facecolors="none",
-                edgecolors=line.get_color(), linewidths=1.5, zorder=4,
-            )
-        # A frequency of 100/N percent corresponds to one observed scenario.
-        # The log axis makes rare outcomes visible; it cannot display zero frequency.
-        one_path = 100 / len(no_hedge)
-        axis.set_yscale("log")
-        ticks = [10.0 ** power for power in range(-10, 3) if one_path <= 10.0 ** power <= 100]
-        axis.set_yticks(ticks)
-        axis.set_yticklabels([f"{tick:g}%" for tick in ticks])
-        axis.yaxis.set_minor_formatter(NullFormatter())
-        axis.set_ylim(one_path / 1.8, 125)
-        axis.axhline(one_path, linestyle=":", linewidth=1, alpha=0.45)
-        axis.text(
-            0.99, one_path / 1.12, f"1 of {len(no_hedge):,} scenarios = {one_path:.4g}%",
-            transform=axis.get_yaxis_transform(), ha="right", va="top", fontsize=9,
-        )
-        # The optional vertical line is only a reading aid; it does not cut off any losses.
-        if threshold is not None:
-            if not np.isfinite(threshold):
-                raise ValueError("threshold must be finite or None.")
-            axis.axvline(threshold, linestyle=":", linewidth=1, alpha=0.6)
-            axis.text(
-                threshold, 0.98, f"  Threshold = {threshold:g}",
-                transform=axis.get_xaxis_transform(), ha="left", va="top", fontsize=9,
-            )
-        explanation = (
-            "Choose a loss threshold on the horizontal axis, then read the percentage of "
-            "evaluation scenarios with loss at least that large. A lower curve at that threshold "
-            "means fewer exceedances. The vertical axis is logarithmic: adjacent decade ticks "
-            "represent a factor of ten. Each open endpoint is the largest loss in that sample, "
-            "not a bound on future loss. The dotted horizontal line marks one scenario. "
-            "A horizontal tail is an interval with no intervening observed losses, not missing data. "
-            "All sample extremes are shown, without smoothing or interpolation of probabilities. "
-            "These are scenario frequencies, not the exponential weights used by entropic risk. "
-            "The figure uses the configured display replicate (or the requested replicate), "
-            "not a pooled sample of training runs."
-        )
-        # Add an optional explanation of exponential weighting for entropic risk.
-        # These weights describe risk sensitivity; the plotted curves remain scenario frequencies.
-        if name == "Entropic":
-            details = []
-            lam = reference.settings.risk_aversion
-            for label, losses in series[:-1]:
-                # Subtract the maximum loss before exponentiation to keep positive-lambda
-                # weights numerically manageable. Their normalized shares stay the same.
-                weights = np.exp(lam * (losses - losses.max()))
-                # One maximum-loss scenario has scaled weight 1, so its share is 100/sum.
-                # With tied maxima, this reports one such scenario's share, not their combined share.
-                largest_weight = 100 / weights.sum()
-                details.append(
-                    f"{label}: maximum loss {losses.max():.3f}; one maximum-loss scenario "
-                    f"has {largest_weight:.1f}% of the exponential weight"
-                )
-            explanation += " For the displayed runs, " + "; ".join(details) + "."
+        explanation = _draw_loss_tails(axis, experiments, name, replicate, threshold)
         output[name] = _finish(
             figure, axis, _filename("tails", experiments, name), explanation, show, explain, save_dir,
         )
     return output if not show else None
+
+
+# Arrange the same learning, risk and tail plots into one figure.
+# Rows are plot types; columns are common fitted objectives.
+# Reuse the drawing helpers above so data checks and plotted values stay the same.
+def plot_results_grid(experiments, objective=None, *, replicate=None, threshold=5.0,
+                      dpi=DEFAULT_DPI, figsize=None, show=True, explain=False,
+                      save_dir=None):
+    """Compare learning curves, test risk and loss tails in a single grid.
+
+    By default, CVaR and Entropic occupy separate columns (three rows, two
+    columns). Set objective="CVaR" or "Entropic" for a three-row, one-column
+    figure. Only objectives fitted in every experiment are included.
+
+    replicate selects the learning and tail runs; None keeps their existing
+    defaults. The risk row always displays all runs, as plot_risk does.
+    threshold is the optional vertical reference line in the tail panels.
+    No training, evaluation or simulation is performed.
+
+    With show=False, return (figure, axes), with axes always two-dimensional.
+    save_dir exports the complete grid as a 300-dpi PNG and a vector SVG.
+    """
+    experiments = _experiments(experiments)
+    names = _objectives(experiments, objective)
+    if figsize is None:
+        figsize = (8 * len(names), 16)
+
+    figure, axes = plt.subplots(
+        3, len(names), figsize=figsize, dpi=dpi, squeeze=False,
+    )
+    panels = (
+        ("Learning curves", "Updates after warm-up", "Validation risk (lower is better)"),
+        ("Test risk", "", "Measured risk before premium (lower is better)"),
+        ("Loss tails", "Loss threshold before premium", "Scenarios with at least this loss (%)"),
+    )
+    try:
+        for column, name in enumerate(names):
+            for row, (title, xlabel, ylabel) in enumerate(panels):
+                _style_axis(
+                    axes[row, column],
+                    title + "\n" + _criterion(name, experiments[0].settings),
+                    xlabel, ylabel,
+                )
+            _draw_learning(axes[0, column], experiments, name, replicate)
+            _draw_risk(axes[1, column], experiments, name)
+            _draw_loss_tails(axes[2, column], experiments, name, replicate, threshold)
+
+        # _finish adds the first legend; prepare the remaining panel legends.
+        for axis in axes.flat:
+            if axis is not axes[0, 0]:
+                _legend(axis)
+        explanation = (
+            "Rows show learning curves, test risk and loss tails; columns separate "
+            "the fitted risk objectives. Lower validation and test risk is better. "
+            "In the bottom row, lower curves at a given threshold mean fewer losses "
+            "at least that large. Tail frequencies use a logarithmic vertical axis "
+            "and retain every sample extreme. The grid uses the same recorded "
+            "histories, test scores and loss arrays as the individual plotting functions."
+        )
+        _finish(
+            figure, axes[0, 0],
+            _filename("results_grid", experiments, "_".join(names)),
+            explanation, show, explain, save_dir,
+        )
+    except Exception:
+        # Failed comparisons must not leave a partially drawn figure active.
+        plt.close(figure)
+        raise
+    return (figure, axes) if not show else None
 
 
 # Display example stock paths and a second graph of the liability payments.
@@ -1007,3 +1102,4 @@ def plot_memory_comparison(reports, *, save_dir=None, show=True):
     )
 
     return (figure, axes) if not show else None
+
