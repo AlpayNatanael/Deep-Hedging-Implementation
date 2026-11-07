@@ -136,15 +136,20 @@ def run_memory_experiment(model, output_dir="results/portfolio_memory_comparison
     interval = float(interval)
     if not math.isfinite(interval) or interval <= 0:
         raise ValueError("interval must be positive and finite.")
-    if model.data_generator is not None or model.data or model.runs:
-        raise ValueError("Supply a fresh model configuration using the built-in synthetic generator.")
+    backend = getattr(model, "data_generator", None)
+    if backend is None:
+        backend = "Regular"  # Also accept models created by the original class.
+    if (not isinstance(backend, str) or backend not in {"Regular", "Fast"}
+            or model.data or model.runs
+            or model.metadata.get("custom_generator_requires_reconnection", False)):
+        raise ValueError("Supply a fresh model using the built-in Regular or Fast generator.")
 
     # The worker imports the same scripts as the notebook, including on Windows.
     project_root = Path(__file__).resolve().parents[1]
     destination = Path(output_dir).resolve()
     destination.mkdir(parents=True, exist_ok=True)
     mode = "fresh" if model.dynamic_data else "fixed"
-    stem = f"{model.method}_{mode}"
+    stem = f"{model.method}_{mode}" + ("_fast" if backend == "Fast" else "")
     final_report = destination / f"{stem}.json"
     log_path = destination / f"{stem}.log"
     environment = dict(os.environ)
@@ -158,6 +163,9 @@ def run_memory_experiment(model, output_dir="results/portfolio_memory_comparison
         config_path.write_text(json.dumps({
             "settings": model.settings.to_dict(), "method": model.method,
             "dynamic_data": model.dynamic_data, "name": model.name,
+            "data_generator": backend,
+            "fast_workers": getattr(model, "fast_workers", 6),
+            "fast_prefetch": getattr(model, "fast_prefetch", 2),
             "interval": interval, "verbose": bool(verbose),
         }), encoding="utf-8")
         command = [sys.executable, "-u", "-m", "scripts.memory_tracker",
@@ -185,6 +193,8 @@ def run_memory_experiment(model, output_dir="results/portfolio_memory_comparison
             if worker.poll() is None:
                 worker.kill()
                 worker.wait()
+            if worker.stdout is not None:
+                worker.stdout.close()
 
 
 def _run_worker(config_path, report_path):
@@ -205,7 +215,10 @@ def _run_worker(config_path, report_path):
     configuration = json.loads(Path(config_path).read_text(encoding="utf-8"))
     settings = Settings.from_dict(configuration["settings"])
     model = generalNN(method=configuration["method"], settings=settings,
-                      dynamic_data=configuration["dynamic_data"], name=configuration["name"])
+                      dynamic_data=configuration["dynamic_data"], name=configuration["name"],
+                      data_generator=configuration.get("data_generator", "Regular"),
+                      fast_workers=configuration.get("fast_workers", 6),
+                      fast_prefetch=configuration.get("fast_prefetch", 2))
     torch.set_num_threads(settings.torch_threads)
 
     # Warm the simulator using an unrelated seed. Compilation is excluded
@@ -238,7 +251,8 @@ def _run_worker(config_path, report_path):
     project_root = Path(__file__).resolve().parents[1]
     source_hashes = {
         path: hashlib.sha256((project_root / path).read_bytes()).hexdigest()
-        for path in ("scripts/general_nn.py", "scripts/settings.py", "scripts/memory_tracker.py")
+        for path in ("scripts/general_nn.py", "scripts/settings.py", "scripts/memory_tracker.py",
+                     "scripts/fast_paths.py") if (project_root / path).exists()
     }
     risks = {}
     for objective in ("CVaR", "Entropic"):
@@ -248,6 +262,8 @@ def _run_worker(config_path, report_path):
     report = {
         "name": model.name, "method": model.method,
         "dynamic_data": model.dynamic_data,
+        "data_generator": model.data_generator,
+        "fast_workers": model.fast_workers, "fast_prefetch": model.fast_prefetch,
         "memory": memory, "sampling_interval_seconds": configuration["interval"],
         "parameter_count": model.parameter_count,
         "dataset_bytes": dataset_bytes, "retained_dataset_mib": sum(dataset_bytes.values()) / 1024**2,
