@@ -7,10 +7,12 @@ save_dir="figures" to export 300-dpi PNGs and vector SVGs.
 Use plot_results_grid to arrange learning, risk and loss tails in one figure.
 No data, scores, model weights, or training settings are changed.
 
-All eleven public plotting functions are available:
+All fifteen public plotting and presentation functions are available:
     plot_learning, plot_learning_simple, plot_losses, plot_pnl_histogram,
     plot_pnl_comparison, plot_risk, plot_loss_tails, plot_paths,
-    show_published_figure, plot_memory_comparison, and plot_results_grid.
+    show_published_figure, plot_memory_comparison, plot_results_grid,
+    show_table, plot_path_generation_comparison, plot_path_training_comparison,
+    and show_path_speedups.
 
 The first seven and plot_results_grid accept objective="CVaR" or objective="Entropic".
 Omitting objective displays all common fitted objectives, except that
@@ -24,6 +26,7 @@ Example notebook calls after installing this file as scripts/plots.py:
     plots.plot_risk([ours, ours_variance], objective="CVaR")
     plots.plot_loss_tails([ours, ours_variance], objective="Entropic")
     plots.plot_results_grid([paper, ours])
+    plots.plot_path_generation_comparison(generation_reports, save_dir=result_dir)
 
 If plots was already imported, run importlib.reload(plots) after replacing
 the file. Use print(plots.__file__) to check which file the notebook imports.
@@ -795,6 +798,168 @@ def plot_results_grid(experiments, objective=None, *, replicate=None, threshold=
     return (figure, axes) if not show else None
 
 
+def show_table(headers, rows, *, show=True):
+    """Display a small Markdown table; show=False returns its text instead."""
+    text = "| " + " | ".join(headers) + " |\n"
+    text += "|" + "---|" * len(headers) + "\n"
+    text += "\n".join("| " + " | ".join(map(str, row)) + " |" for row in rows)
+    if not show:
+        return text
+    from IPython.display import Markdown, display
+    display(Markdown(text))
+
+
+def _path_report_groups(reports):
+    """Group repeats in fixed/fresh, Regular/Fast order, regardless of run order."""
+    order = ((False, "Regular"), (False, "Fast"), (True, "Regular"), (True, "Fast"))
+    grouped = {}
+    for report in reports:
+        key = (report["dynamic_data"], report["data_generator"])
+        if key not in order:
+            raise ValueError("Path reports must use Regular or Fast generation.")
+        group = grouped.setdefault(key, [])
+        if group and report["configuration"] != group[0]["configuration"]:
+            raise ValueError("Use one configuration label for each data mode and generator.")
+        group.append(report)
+    if not grouped:
+        raise ValueError("Pass at least one path benchmark report.")
+    return [grouped[key] for key in order if key in grouped]
+
+
+def _path_values(group, measure):
+    values = np.array([measure(report) for report in group], dtype=float)
+    if values.ndim != 1 or not np.isfinite(values).all():
+        raise ValueError("Benchmark measurements must be finite numbers.")
+    return values
+
+
+def _path_mean_sd(values):
+    sd = values.std(ddof=1) if len(values) > 1 else 0.0
+    return f"{values.mean():.3f} ± {sd:.3f}"
+
+
+def _plot_path_comparison(groups, measures, filename, *, aggregate=np.median,
+                          save_dir=None, show=True):
+    """Draw report summaries without generating paths or changing the reports."""
+    labels = [group[0]["configuration"] for group in groups]
+    colors = ["#f58518" if group[0]["data_generator"] == "Fast" else "#4c78a8"
+              for group in groups]
+    figure, axes = plt.subplots(1, len(measures), figsize=(5 * len(measures), 4),
+                                dpi=DEFAULT_DPI, squeeze=False)
+    try:
+        for axis, (title, unit, measure) in zip(axes[0], measures):
+            heights = [aggregate(_path_values(group, measure)) for group in groups]
+            bars = axis.bar([label.replace(" / ", "\n") for label in labels],
+                            heights, color=colors)
+            axis.bar_label(bars, labels=[f"{value:.2f}" for value in heights], padding=3)
+            axis.set_title(title)
+            axis.set_ylabel(unit)
+            axis.set_ylim(0, max(heights) * 1.22)
+            axis.grid(axis="y", alpha=0.2)
+            axis.set_axisbelow(True)
+        _finish(figure, axes[0, 0], filename, "", show, False, save_dir)
+    except Exception:
+        plt.close(figure)
+        raise
+    return (figure, axes) if not show else None
+
+
+def plot_path_generation_comparison(reports, *, save_dir=None, show=True):
+    """Show the path-creation table and wall-time, CPU-work and RAM panels.
+
+    Pass generation_reports from Path_Generation_Comparison.ipynb. Repeats
+    are summarized by their median, with simulator warm-up reported separately.
+    show=False returns (figure, axes) without displaying the table or figure.
+    save_dir exports generation_comparison.png and generation_comparison.svg.
+    """
+    groups = _path_report_groups(reports)
+    rows = []
+    for group in groups:
+        rows.append([
+            group[0]["configuration"],
+            f"{np.median(_path_values(group, lambda r: r['memory']['seconds'])):.3f}",
+            f"{np.median(_path_values(group, lambda r: r['cpu_seconds'])):.3f}",
+            f"{np.median(_path_values(group, lambda r: r['memory']['peak_mib'])):.1f}",
+            f"{np.median(_path_values(group, lambda r: r['maximum_dataset_bytes'] / 1024**2)):.3f}",
+            f"{np.median(_path_values(group, lambda r: r['warmup_seconds'])):.3f}",
+        ])
+    show_table(
+        ["Configuration", "Wall time (s)", "CPU time (s)", "Peak RAM (MiB)",
+         "Largest consumer dataset (MiB)", "Separate warm-up (s)"], rows, show=show,
+    )
+    return _plot_path_comparison(groups, [
+        ("Equal-scenario creation", "Seconds", lambda r: r["memory"]["seconds"]),
+        ("Total CPU work", "CPU seconds", lambda r: r["cpu_seconds"]),
+        ("Peak process RAM", "MiB", lambda r: r["memory"]["peak_mib"]),
+    ], "generation_comparison", save_dir=save_dir, show=show)
+
+
+def plot_path_training_comparison(reports, *, save_dir=None, show=True):
+    """Show the training table, runtime/RAM panels and held-out risk panels.
+
+    Timing and RAM use medians across repeats. Risk bars use means; the table
+    gives mean ± sample standard deviation across training seeds. Each risk
+    uses the policy trained for that objective. No new training is performed.
+    show=False returns {'training': (figure, axes), 'risk': (figure, axes)}.
+    save_dir exports training_comparison and test_risks as PNG and SVG files.
+    """
+    groups = _path_report_groups(reports)
+    rows = []
+    for group in groups:
+        rows.append([
+            group[0]["configuration"],
+            f"{np.median(_path_values(group, lambda r: r['memory']['seconds'])):.2f}",
+            f"{np.median(_path_values(group, lambda r: r['memory']['peak_mib'])):.1f}",
+            f"{np.median(_path_values(group, lambda r: r['retained_dataset_mib'])):.1f}",
+            _path_mean_sd(_path_values(group, lambda r: r["test_risk"]["CVaR"]["mean"])),
+            _path_mean_sd(_path_values(group, lambda r: r["test_risk"]["Entropic"]["mean"])),
+        ])
+    show_table(
+        ["Configuration", "Preparation + train + test (s)", "Peak RAM (MiB)",
+         "Retained datasets (MiB)", "Test CVaR: mean ± SD", "Test entropic risk: mean ± SD"],
+        rows, show=show,
+    )
+    output = {}
+    output["training"] = _plot_path_comparison(groups, [
+        ("Preparation, training and test", "Seconds", lambda r: r["memory"]["seconds"]),
+        ("Peak process RAM", "MiB", lambda r: r["memory"]["peak_mib"]),
+    ], "training_comparison", save_dir=save_dir, show=show)
+    output["risk"] = _plot_path_comparison(groups, [
+        ("CVaR-trained policy", "Test CVaR (lower is better)", lambda r: r["test_risk"]["CVaR"]["mean"]),
+        ("Entropic-trained policy", "Test entropic risk (lower is better)", lambda r: r["test_risk"]["Entropic"]["mean"]),
+    ], "test_risks", aggregate=np.mean, save_dir=save_dir, show=show)
+    return output if not show else None
+
+
+def show_path_speedups(generation_reports, training_reports, *, show=True):
+    """Show Regular/Fast median-time ratios for both fixed and fresh data.
+
+    All four configurations must be present in each set of reports.
+    show=False returns the Markdown table without displaying it.
+    """
+    collections = []
+    for reports in (generation_reports, training_reports):
+        grouped = _path_report_groups(reports)
+        by_mode = {(g[0]["dynamic_data"], g[0]["data_generator"]): g for g in grouped}
+        if len(by_mode) != 4:
+            raise ValueError("Speedup comparisons require all four configurations.")
+        collections.append(by_mode)
+    rows = []
+    for fresh, label in ((False, "Fixed pool"), (True, "Fresh batches")):
+        ratios = []
+        for grouped in collections:
+            regular = np.median(_path_values(grouped[fresh, "Regular"], lambda r: r["memory"]["seconds"]))
+            fast = np.median(_path_values(grouped[fresh, "Fast"], lambda r: r["memory"]["seconds"]))
+            if regular <= 0 or fast <= 0:
+                raise ValueError("Speedup comparisons require positive elapsed times.")
+            ratios.append(f"{regular / fast:.2f}×")
+        rows.append([label, *ratios])
+    return show_table(
+        ["Data mode", "Path creation speedup: Regular/Fast", "Training experiment speedup: Regular/Fast"],
+        rows, show=show,
+    )
+
+
 # Display example stock paths and a second graph of the liability payments.
 # Pass one experiment or a compatible list. The first experiment provides
 # the displayed paths, so a list does not create a separate panel per method.
@@ -1102,4 +1267,5 @@ def plot_memory_comparison(reports, *, save_dir=None, show=True):
     )
 
     return (figure, axes) if not show else None
+
 
