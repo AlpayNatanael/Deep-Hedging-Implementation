@@ -22,7 +22,7 @@ Our main modification is to generate fresh market scenarios during training inst
 | Notebook | What it tests |
 |---|---|
 | [Single_Call_Comparison.ipynb](https://github.com/AlpayNatanael/Deep-Hedging-Implementation/blob/main/Single_Call_Comparison.ipynb) | One call: four neural configurations, stock-only or stock-plus-variance trading, and a separate cost-free Heston comparison. Network architecture and data mode change together in the neural comparison. |
-| [Large_Portfoloio_Comparison.ipynb](https://github.com/AlpayNatanael/Deep-Hedging-Implementation/blob/main/Large_Portfoloio_Comparison.ipynb) | Three calls on three independent simulated stocks. Match network architectures and instruments to isolate fixed-pool versus fresh-batch training. |
+| [Small_Portfolio_Comparison.ipynb](https://github.com/AlpayNatanael/Deep-Hedging-Implementation/blob/main/Small_Portfolio_Comparison.ipynb) | Three calls on three independent simulated stocks. Match network architectures and instruments to isolate fixed-pool versus fresh-batch training. |
 | [Large_Portfolio_Memory_Comparison.ipynb](https://github.com/AlpayNatanael/Deep-Hedging-Implementation/blob/main/Large_Portfolio_Memory_Comparison.ipynb) | Run the matched three-stock configurations in separate processes and compare peak RAM, runtime and test risk. |
 | [Path_Generation_Comparison.ipynb](https://github.com/AlpayNatanael/Deep-Hedging-Implementation/blob/main/Path_Generation_Comparison.ipynb) | Compare Regular/Fast generation with fixed pools/fresh batches. Measure equal-scenario creation first, then complete preparation, training and evaluation. |
 
@@ -83,7 +83,15 @@ Restart the kernel and rerun all cells so both Regular and Fast measurements use
 - `scripts/fast_paths.py`: optional parallel generation and bounded prefetch.
 - `scripts/path_benchmark.py`: isolated, equal-scenario creation benchmarks.
 
-See the [code guide](https://github.com/AlpayNatanael/Deep-Hedging-Implementation/blob/main/docs/code_guide.md) for model configuration and persistence, and the [historical-data guide](https://github.com/AlpayNatanael/Deep-Hedging-Implementation/blob/main/docs/historical_data.md) for evaluating supplied observations. The experiments reported here use simulated data.
+| Guide | Contents |
+|---|---|
+| [Methods](docs/methods.md) | Heston simulation, network features, accounting, objectives and calibration |
+| [Experiments](docs/experiments.md) | Current notebooks, settings, seeds, reproduction steps, measurement scopes and known issues |
+| [Paper comparison](docs/paper_comparison.md) | What follows Deep Hedging, local differences and the scope of our contributions |
+| [Code guide](docs/code_guide.md) | Model configuration, Regular/Fast generation, plotting and persistence |
+| [Historical data](docs/historical_data.md) | Required observations, provenance, units and evaluation checks |
+
+The experiments reported here use simulated data. Legacy saved checkpoints have a [known replay consistency issue](docs/experiments.md#software-checks-and-known-issues); keep new snapshots and their recorded settings with new results.
 
 ## Research direction
 

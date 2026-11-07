@@ -1,54 +1,48 @@
-# Evaluate supplied historical data
+# Evaluating supplied historical observations
 
-`model.evaluate_historical(data)` applies the saved policies to observations you supply. It uses the supplied liability payments and asset prices, with the saved feature scaling and frozen network parameters. It does not generate missing market data, replace the liability with a simulated call, or retrain the model.
+`model.evaluate_historical(data)` evaluates current policies using supplied prices, variance features and liability payments. Use a trained or loaded model. It does not fit weights, recalibrate normalization on evaluation data, generate missing quotes or substitute a simulated call payoff.
 
-No historical dataset is included, and no historical performance result is claimed by this project.
+No historical dataset or historical performance result is supplied. Current notebook results use simulated data. See [the code guide](code_guide.md) for training and [Methods](methods.md) for accounting.
 
 ## Required observations
 
-Let $B$ be the number of recorded episodes, $T$ the number of trading decisions, $D$ the configured instrument count, and $M$ the stock count. The saved default models require $T=30$, with $31$ price observations per episode.
+Let $B$ be episodes, $N$ configured intervals, $D$ instrument channels and $M$ stocks. Default policies use $N=30$, hence 31 price observations per episode.
 
-| Dictionary field | Shape or content | Meaning |
+| Field | Shape / contents | Meaning |
 |---|---|---|
-| `prices` | $(B,T+1,D)$ | Nonnegative observed instrument prices, in raw currency per unit. |
-| `stock_prices` | $(B,T+1,M)$ | Positive stock prices used as network inputs. |
-| `variances` | $(B,T+1,M)$ | Nonnegative variance inputs, in the saved model's annual variance units. |
-| `payoffs` | $(B,)$ | Recorded terminal liability payments, in currency; always required. |
-| `dates` | $(B,T+1)$ | Strictly increasing observation and trading timestamps. |
-| `feature_times` | $(B,T)$ | Latest availability time of the inputs used at each decision. |
-| `instrument_names`, `stock_names` | Ordered names | Must match the saved settings exactly. |
-| `cashflows` | Optional $(B,T,D)$ | Observed per-unit asset payments received during each holding interval. |
+| `prices` | `(B, N+1, D)` | Nonnegative observed quotes, raw currency per unit |
+| `stock_prices` | `(B, N+1, M)` | Positive underlying feature prices |
+| `variances` | `(B, N+1, M)` | Nonnegative features in annual variance units |
+| `payoffs` | `(B,)` | Required terminal liability payments |
+| `dates` | `(B, N+1)` | Strictly increasing timestamps per episode |
+| `feature_times` | `(B, N)` | Latest input availability time for each decision |
+| `instrument_names`, `stock_names` | Ordered lists | Exact configured channel/stock names |
+| `cashflows` | optional `(B, N, D)` | Per-unit asset payments during each interval |
+| `metadata` | Dictionary below | Provenance and conventions |
 
-Normalize both timestamp arrays to UTC before calling the method. Every feature must have been available by its corresponding decision time. Use the saved model's horizon and time convention; supplying dates does not change its daily networks or normalization.
+All numbers must be finite and dimensions match the policy. Even nontradable configured channels require observed quotes: the paper-stock control retains a forced-zero variance channel. Historical variance-claim quotes are not synthesized.
 
-Historical variance may be a trailing estimate, but its source and construction must be declared. Supply variance, not volatility or percentage volatility, and use only information available at the decision. Such an estimate is an input proxy; it is not an observed latent Heston state. A model trained on simulated states is not automatically calibrated to that proxy.
+Normalize timestamps to UTC before supplying nanosecond-compatible arrays/strings. No `NaT` values are allowed. Each `feature_times[b,k]` must be no later than `dates[b,k]`. Dates describe observations; they do not resample the policy or redefine its configured time step, maturity or scaling.
 
-## Units, cashflows, and loss
+Variance can be a declared trailing estimate using only information available at the decision. Supply variance, not volatility or percentage volatility. A historical proxy differs from the simulated latent Heston state; transfer performance needs evaluation.
 
-Each `InstrumentSettings` record specifies its name, kind, stock association, multiplier, trading flag, and optional cost rate. Supply observed prices for every configured channel; the method never constructs a historical variance claim from a Heston formula. The fixed data schema also requires observed quotes for a nontradable paper-stock output, although its forced-zero holdings contribute no gains or fees; fabricated placeholder quotes are not supported.
+## Units and payments
 
-For raw price $P_{k,j}$, interval cash payment $A_{k,j}$, multiplier $m_j$, and holding $h_{k,j}$, accounting uses
+Loss is $L=Z-G+C$ before premium, with zero interest, opening/rebalancing fees and no additional maturity trading fee. Multipliers apply once inside `calculate_losses`; do not pre-multiply quotes or cashflows. Instrument-specific rates override the general fee rate.
 
-$$
-G=\sum_{k,j}h_{k,j}m_j(P_{k+1,j}-P_{k,j}+A_{k,j}),
-\qquad
-C=\sum_{k,j}c_jm_jP_{k,j}|h_{k,j}-h_{k-1,j}|,
-\qquad L=Z-G+C.
-$$
+An interval payment belongs to the holding carried from its starting to ending timestamp. Its gain is $\delta m(P_{k+1}-P_k+a_k)$ for raw quote $P$, per-unit payment $a$ and multiplier $m$. Keep price adjustments, distributions and corporate actions consistent so payments are counted once. Intermediate liability payments and other interest conventions are unsupported.
 
-Here $Z$ is the supplied liability payment and $h_{-1,j}=0$. Multipliers apply once: do not pre-multiply prices or asset cashflows. An interval cashflow belongs to the holding carried from its starting timestamp to its ending timestamp. Keep prices, distributions, and corporate actions consistent so each payment is counted once.
+Use `asset_cashflows="none"` for no payments; omitted cashflows become zeros. Otherwise supply the array and declare `"included"`. Nonzero payments with `"none"`, or `"included"` without an array, are rejected.
 
-Results are losses **before premium**, with zero interest, opening and rebalancing fees, terminal marking to market, and no maturity trading fee. Unsupported interest conventions and intermediate liability payments are rejected. An instrument-specific cost rate overrides the general configured rate.
+## Template for your own data
 
-## Example with your own arrays
-
-The variables below represent data you must obtain and prepare; they are not a supplied dataset.
+The names below are arrays/descriptions you must prepare. This is a schema template, not a supplied market dataset.
 
 ```python
 historical_data = {
     "prices": observed_instrument_prices,
     "stock_prices": observed_stock_prices,
-    "variances": supplied_variance_states,
+    "variances": supplied_variance_features,
     "payoffs": observed_terminal_payments,
     "dates": observation_dates_utc,
     "feature_times": feature_availability_times_utc,
@@ -71,6 +65,14 @@ historical = model.evaluate_historical(
 )
 ```
 
-If asset payments occur, supply `cashflows` and set `asset_cashflows` to `"included"`. The returned object works with the same plotting helpers and is stored in `model.historical_results`; the parent's original experiment arrays remain unchanged.
+The three source fields must be nonempty descriptions. For included payments add `"cashflows": observed_asset_payments` and change `asset_cashflows` to `"included"`.
 
-For a separately prepared validation dataset, use `model.load_data(data, split="validation")`, then `model.validate()`. Validation measures frozen policies. Known reuse and dated overlap across training and evaluation are rejected; callers must still establish provenance and independence. Overlapping historical episodes are dependent observations.
+The result is stored in `model.historical_results` and supports ordinary loss/risk/tail/P&L plots. Its metrics use supplied payments and preserve the parent's original synthetic scores. `historical.evaluate()` re-evaluates those observations; synthetic analytical benchmarks on that view are rejected. `plot_learning(historical)` shows original training history, not historical retraining.
+
+## Separation and caller responsibilities
+
+Historical checking rejects reserved training/validation seeds, identical retained training/calibration/validation datasets and overlapping date ranges with those dated datasets. It deliberately skips an existing `test` split. The general loader applies role-specific checks for supplied training/validation/test data.
+
+Fingerprints recognize identical whole datasets in the same row order, not every partial overlap, reordered subset or dependence. Streamed batches are normally discarded, so observations cannot be checked against every past training batch. Undated training sources do not establish calendar separation.
+
+Callers must establish provenance, causal features and out-of-sample periods. Overlapping episodes are dependent observations. For a separately prepared validation set, call `model.load_data(..., split="validation")`, then `model.validate()`; it measures frozen policies rather than fitting them.
