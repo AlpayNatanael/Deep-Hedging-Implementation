@@ -8,6 +8,13 @@ Our main modification is to generate fresh market scenarios during training inst
 
 **In a matched three-stock experiment, fresh-batch training achieved similar observed test CVaR using approximately 22% of the peak CPU RAM required by fixed-pool training.** That run took longer to complete. An optional parallel path generator is now implemented to investigate this runtime trade-off.
 
+## Presentation and classroom demo
+
+- [Demo.ipynb](Demo.ipynb): a short undergraduate introduction to hedging, with a two-outcome example, recorded project figures, and optional training.
+- [Presentation slides (PDF)](Deep_Hedging_Presentation.pdf): the accompanying talk on deep hedging and memory optimization.
+
+The demo opens with saved outputs. Training is off by default (`RUN_TRAINING = False`). To rerun the walkthrough, install NumPy, pandas, Matplotlib and IPython in your Jupyter environment.
+
 ## What we implement
 
 - **Daily neural hedging policies.** At each trading date, a network observes current stock prices, variances and previous holdings, then chooses positions in the available instruments. The default designs use two hidden layers: a compact Tanh network and a paper-inspired ReLU network with batch normalization.
