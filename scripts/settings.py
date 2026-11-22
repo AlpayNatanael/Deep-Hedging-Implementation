@@ -21,8 +21,8 @@ class NetworkSettings:
     batch_normalization: bool = False
 
     def validate(self):
-        if len(self.hidden_sizes) != 2 or any(type(size) is not int or size < 1 for size in self.hidden_sizes):
-            raise ValueError("Keep two hidden layers with positive integer widths.")
+        if len(self.hidden_sizes) == 0 or any(type(size) is not int or size < 1 for size in self.hidden_sizes):
+            raise ValueError("Provide at least one hidden layer with positive integer widths.")
         if self.activation not in {"tanh", "relu"}:
             raise ValueError("Choose tanh or relu.")
         if not isinstance(self.batch_normalization, bool):

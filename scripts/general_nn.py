@@ -6,7 +6,7 @@ Heston and risk helpers live at the end of this file to keep imports small.
 from __future__ import annotations
 import copy
 from contextlib import nullcontext
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 import hashlib
 import json
 import math
@@ -345,7 +345,7 @@ class generalNN:
     # Initialize storage for selected models, data, histories and results.
     def __init__(self, method, settings=None, dynamic_data=True, training_data=None,
                  data_generator="Regular", name=None, *,
-                 fast_workers=6, fast_prefetch=2):
+                 fast_workers=6, fast_prefetch=2, num_hidden_layers=None):
         if not isinstance(dynamic_data, bool):
             raise TypeError("dynamic_data must be a boolean.")
         # Store the network preset: "ours" or "paper".
@@ -355,6 +355,16 @@ class generalNN:
         # Use the supplied settings, or create default settings if none were given.
         # Then fill in the network and instrument choices for the selected preset.
         self.settings = (settings or Settings()).resolve(method)
+        if num_hidden_layers is not None:
+            if type(num_hidden_layers) is not int or num_hidden_layers < 1:
+                raise ValueError("num_hidden_layers must be a positive integer.")
+            network = self.settings.network
+            widths = tuple(network.hidden_sizes)
+            # Keep existing widths in order and repeat the last width for added layers.
+            extra_layers = max(0, num_hidden_layers - len(widths))
+            hidden_sizes = widths[:num_hidden_layers] + (widths[-1],) * extra_layers
+            network = replace(network, hidden_sizes=hidden_sizes)
+            self.settings = replace(self.settings, network=network)
 
         # Store the experiment family: "ours", "paper_full", or "paper_stock".
         self.family = self.settings.method
