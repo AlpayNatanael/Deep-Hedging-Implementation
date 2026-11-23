@@ -345,7 +345,7 @@ class generalNN:
     # Initialize storage for selected models, data, histories and results.
     def __init__(self, method, settings=None, dynamic_data=True, training_data=None,
                  data_generator="Regular", name=None, *,
-                 fast_workers=6, fast_prefetch=2, num_hidden_layers=None):
+                 fast_workers=6, fast_prefetch=2, num_hidden_layers=None, activation=None):
         if not isinstance(dynamic_data, bool):
             raise TypeError("dynamic_data must be a boolean.")
         # Store the network preset: "ours" or "paper".
@@ -364,6 +364,11 @@ class generalNN:
             extra_layers = max(0, num_hidden_layers - len(widths))
             hidden_sizes = widths[:num_hidden_layers] + (widths[-1],) * extra_layers
             network = replace(network, hidden_sizes=hidden_sizes)
+            self.settings = replace(self.settings, network=network)
+
+        if activation is not None:
+            network = replace(self.settings.network, activation=activation)
+            network.validate()
             self.settings = replace(self.settings, network=network)
 
         # Store the experiment family: "ours", "paper_full", or "paper_stock".

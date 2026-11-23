@@ -81,6 +81,25 @@ If you are already running a notebook and Numba is missing, install it into that
 
 Restart the kernel and rerun all cells so both Regular and Fast measurements use the intended compiled environment.
 
+### Set up a new neural network
+
+Run this example from the repository root to hedge a single-stock call with four ReLU hidden layers. It uses a short training budget, fits both risk objectives, and prints the test CVaR.
+
+```python
+from scripts.general_nn import generalNN
+from scripts.settings import Settings
+
+settings = Settings(warmup_updates=10, continuation_updates=25, number_of_replicates=1)
+model = generalNN("ours", settings=settings, num_hidden_layers=4, activation="relu")
+model.train()
+model.evaluate()
+print(model.get_run("CVaR")["metrics"]["cvar"])
+```
+
+Choose `activation="tanh"` or `activation="relu"`. Omitting it uses the activation in your settings. The default presets use two hidden layers with tanh for `"ours"` and ReLU for `"paper"`.
+
+In the three-stock notebook, `generalNN("ours", settings=ours.settings, num_hidden_layers=4)` reuses the stocks and instruments of `ours` and starts with fresh weights in four 36-unit tanh layers. [Three-stock notebook](Small_Portfolio_Comparison.ipynb)
+
 ## Code and documentation
 
 - `scripts/general_nn.py`: datasets, daily networks, simulation, training, calibration, evaluation and persistence.
