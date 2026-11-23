@@ -8,7 +8,7 @@ Our main modification is to generate fresh market scenarios during training inst
 
 **In a matched three-stock experiment, fresh-batch training achieved similar observed test CVaR using approximately 22% of the peak CPU RAM required by fixed-pool training.** That run took longer to complete. An optional parallel path generator is now implemented to investigate this runtime trade-off.
 
-## Presentation and classroom demo
+## Presentation demo
 
 - [Demo.ipynb](Demo.ipynb): a short undergraduate introduction to hedging, with a two-outcome example, recorded project figures, and optional training.
 - [Presentation slides (PDF)](Deep_Hedging_Presentation.pdf): the accompanying talk on deep hedging and memory optimization.
